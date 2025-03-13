@@ -119,3 +119,13 @@ C:\Users\keith\code\dashboard\dashboard\DashboardAPI\obj\Debug\net9.0\refint\Das
 C:\Users\keith\code\dashboard\dashboard\DashboardAPI\obj\Debug\net9.0\DashboardAPI.pdb
 C:\Users\keith\code\dashboard\dashboard\DashboardAPI\obj\Debug\net9.0\DashboardAPI.genruntimeconfig.cache
 C:\Users\keith\code\dashboard\dashboard\DashboardAPI\obj\Debug\net9.0\ref\DashboardAPI.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Caching.Abstractions.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Caching.Memory.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Configuration.Abstractions.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Logging.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Options.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\bin\Debug\net9.0\Microsoft.Extensions.Primitives.dll
+C:\Users\keith\code\dashboard\dashboard\DashboardAPI\obj\Debug\net9.0\DashboardAPI.sourcelink.json
