@@ -1,0 +1,15 @@
+<div class="overview-cards-container">
+    <div class="card ticker-card" *ngFor="let ticker of overviewTickers">
+        <div class="card-body">
+            <h5 class="card-title">{{ ticker.name }}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">{{ ticker.ticker }}</h6>
+            <p class="card-text">
+                Price: {{ !ticker.data.price ? 'No Data' : ticker.data.price }}
+            </p>
+            <p class="card-text">
+                Change: {{!ticker.data.change? 'No Data' : ticker.data.change}}%
+            </p>
+            <a [routerLink]="['/stock-data']" [queryParams]="{symbol: ticker.ticker}" class="card-link">View Details</a>
+        </div>
+    </div>
+</div>

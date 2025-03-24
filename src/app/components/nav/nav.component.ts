@@ -1,27 +1,15 @@
 import { Component } from '@angular/core';
-import { NgbNavChangeEvent, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
+import { RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-nav',
   templateUrl: './nav.component.html',
-  imports: [NgbNavModule],
+  standalone: true,
+  imports: [NgbNavModule, RouterModule, CommonModule],
   styleUrls: ['./nav.component.css'],
 })
 export class NavComponent {
-  active = 0;
-  disabled = true;
-
-  onNavChange(event: NgbNavChangeEvent) {
-    if (event.nextId === 3) {
-      event.preventDefault();
-    }
-  }
-
-  toggleDisabled() {
-    this.disabled = !this.disabled;
-
-    if (this.disabled) {
-      this.active = 1;
-    }
-  }
+  active = 1;
 }

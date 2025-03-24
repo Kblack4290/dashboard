@@ -1,0 +1,17 @@
+.overview-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.ticker-card {
+  width: 18rem;
+  margin-bottom: 20px;
+  transition: transform 0.3s ease;
+}
+
+.ticker-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
