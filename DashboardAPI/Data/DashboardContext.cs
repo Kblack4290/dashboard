@@ -3,6 +3,8 @@ using DashboardAPI.Models;
 
 namespace DashboardAPI.Data
 {
+    // This class represents the database context for the dashboard application
+    // It inherits from DbContext and is used to interact with the database
     public class DashboardContext : DbContext
     {
         public DashboardContext(DbContextOptions<DashboardContext> options) : base(options)

@@ -4,10 +4,11 @@
             <h5 class="card-title">{{ ticker.name }}</h5>
             <h6 class="card-subtitle mb-2 text-muted">{{ ticker.ticker }}</h6>
             <p class="card-text">
-                Price: {{ !ticker.data.price ? 'No Data' : ticker.data.price }}
+                Price: {{ ticker.data?.price || 'Loading...' }}
             </p>
-            <p class="card-text">
-                Change: {{!ticker.data.change? 'No Data' : ticker.data.change}}%
+            <p class="card-text"
+                [ngClass]="{'text-success': ticker.data?.change > 0, 'text-danger': ticker.data?.change < 0}">
+                Change: {{ ticker.data?.change || 'Loading...' }}%
             </p>
             <a [routerLink]="['/stock-data']" [queryParams]="{symbol: ticker.ticker}" class="card-link">View Details</a>
         </div>

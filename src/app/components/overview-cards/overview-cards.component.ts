@@ -11,7 +11,7 @@ import { AlphaVantageService } from '../../services/alpha-vantage.service';
   imports: [RouterModule, CommonModule],
   styleUrls: ['./overview-cards.component.css'],
 })
-export class OverviewCardsComponent {
+export class OverviewCardsComponent implements OnInit {
   overviewTickers: { name: string; ticker: string; data?: any }[] = [
     { name: 'Dow Jones', ticker: 'DOW' },
     { name: 'S&P 500', ticker: 'SPY' },
@@ -27,16 +27,39 @@ export class OverviewCardsComponent {
   }
 
   fetchOverviewData() {
-    for (const item of this.overviewTickers) {
-      this.alphaVantageService.getStockData(item.ticker).subscribe({
-        next: (data) => {
-          console.log(`${item.name}: ${data}`);
-          item.data = data;
-        },
-        error: (error) => {
-          console.error(`Error fetching data for ${item.name}: ${error}`);
-        },
-      });
+    // Get latest data for all tickers from the database in a single API call
+    this.alphaVantageService.getLatestStockData().subscribe({
+      next: (data) => {
+        console.log('Received data from database:', data);
+
+        // Update each ticker with its corresponding data
+        this.overviewTickers.forEach((ticker) => {
+          if (data[ticker.ticker]) {
+            ticker.data = {
+              price: data[ticker.ticker].close,
+              change: this.calculateDailyChange(data[ticker.ticker]),
+            };
+          } else {
+            ticker.data = { price: 'No Data', change: 'No Data' };
+          }
+        });
+      },
+      error: (error) => {
+        console.error(`Error fetching data from database: ${error}`);
+      },
+    });
+  }
+
+  // Helper method to calculate percentage change
+  private calculateDailyChange(stockData: any): string {
+    if (!stockData || !stockData.open || !stockData.close) {
+      return 'N/A';
     }
+
+    const open = parseFloat(stockData.open);
+    const close = parseFloat(stockData.close);
+    const change = ((close - open) / open) * 100;
+
+    return change.toFixed(2);
   }
 }

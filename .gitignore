@@ -43,3 +43,17 @@ Thumbs.db
 /src/environments/environment/dev.ts
 /src/environments/environment/prod.ts
 /DashboardAPI/appsettings.json
+
+
+# Environment variables
+.env
+*.env
+appsettings.Development.json
+appsettings.Production.json
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
