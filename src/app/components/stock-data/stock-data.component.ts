@@ -8,29 +8,8 @@ import { inject } from '@angular/core';
   selector: 'app-stock-data',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div>
-      <input [(ngModel)]="symbolInput" placeholder="Enter stock symbol" />
-      <button (click)="fetchAndSaveStockData()">
-        Fetch and Save Stock Data
-      </button>
-      <div *ngIf="loading">Loading...</div>
-      <div *ngIf="successMessage" class="success">{{ successMessage }}</div>
-      <div *ngIf="errorMessage" class="error">{{ errorMessage }}</div>
-    </div>
-  `,
-  styles: [
-    `
-      .success {
-        color: green;
-        margin-top: 10px;
-      }
-      .error {
-        color: red;
-        margin-top: 10px;
-      }
-    `,
-  ],
+  templateUrl: './stock-data.component.html',
+  styleUrls: ['./stock-data.component.css'],
 })
 export class StockDataComponent {
   symbolInput = '';
