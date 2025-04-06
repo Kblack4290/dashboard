@@ -1,16 +1,21 @@
-<div class="overview-cards-container">
-    <div class="card ticker-card" *ngFor="let ticker of overviewTickers">
-        <div class="card-body">
-            <h5 class="card-title">{{ ticker.name }}</h5>
-            <h6 class="card-subtitle mb-2 text-muted">{{ ticker.ticker }}</h6>
-            <p class="card-text">
-                Price: {{ ticker.data?.price || 'Loading...' }}
-            </p>
-            <p class="card-text"
-                [ngClass]="{'text-success': ticker.data?.change > 0, 'text-danger': ticker.data?.change < 0}">
-                Change: {{ ticker.data?.change || 'Loading...' }}%
-            </p>
-            <a [routerLink]="['/stock-data']" [queryParams]="{symbol: ticker.ticker}" class="card-link">View Details</a>
+<div class="container-fluid">
+    <div class="row flex-nowrap overflow-auto">
+        <div class="col" *ngFor="let ticker of overviewTickers">
+            <div class="card ticker-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ ticker.name }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ ticker.ticker }}</h6>
+                    <p class="card-text">
+                        Price: {{ ticker.data?.price || 'Loading...' }}
+                    </p>
+                    <p class="card-text"
+                        [ngClass]="{'text-success': ticker.data?.change > 0, 'text-danger': ticker.data?.change < 0}">
+                        Change: {{ ticker.data?.change || 'Loading...' }}%
+                    </p>
+                    <a [routerLink]="['/stock-data']" [queryParams]="{symbol: ticker.ticker}"
+                        class="card-link mt-auto">View Details</a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
