@@ -1,4 +1,62 @@
-<div>
-    <input [(ngModel)]="symbolInput" type="text" placeholder="Enter stock symbol">
-    <button (click)="fetchAndSaveStockData()">Fetch and Save Stock Data</button>
+<div class="container mt-4">
+    <!-- Search section -->
+    <div class="row mb-4">
+        <div class="col-md-6 offset-md-3">
+            <div class="input-group">
+                <input [(ngModel)]="symbolInput" type="text" class="form-control" placeholder="Enter stock symbol"
+                    aria-label="Stock Symbol">
+                <button class="btn btn-primary" type="button" (click)="fetchAndSaveStockData()">Ticker Search</button>
+            </div>
+            <div *ngIf="successMessage" class="alert alert-success mt-2">{{ successMessage }}</div>
+            <div *ngIf="errorMessage" class="alert alert-danger mt-2">{{ errorMessage }}</div>
+            <div *ngIf="loading" class="text-center mt-2">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock data display -->
+    <div class="row">
+        <!-- Stock chart -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{{ currentSymbol }} Stock Price Chart</h5>
+                </div>
+                <div class="card-body chart-container">
+                    <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions">
+                    </canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock info -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>About {{ currentSymbol }}</h5>
+                </div>
+                <div class="card-body">
+                    <div *ngIf="stockInfo">
+                        <p><strong>Symbol:</strong> {{ stockInfo.symbol }}</p>
+                        <p><strong>Latest Price:</strong> ${{ stockInfo.latestPrice }}</p>
+                        <p><strong>Date:</strong> {{ stockInfo.latestDate }}</p>
+                        <p><strong>Previous Close:</strong> ${{ stockInfo.previousClose }}</p>
+                        <p><strong>Day Range:</strong> ${{ stockInfo.low }} - ${{ stockInfo.high }}</p>
+                        <p><strong>Volume:</strong> {{ stockInfo.volume | number }}</p>
+                        <p>
+                            <strong>Change:</strong>
+                            <span
+                                [ngClass]="{'text-success': stockInfo.change > 0, 'text-danger': stockInfo.change < 0}">
+                                {{ stockInfo.change }}%
+                            </span>
+                        </p>
+                    </div>
+                    <div *ngIf="!stockInfo">No information available</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
