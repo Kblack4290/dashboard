@@ -3,6 +3,7 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { inject } from '@angular/core';
 import { AlphaVantageService } from '../../services/alpha-vantage.service';
+import { SymbolService } from '../../services/symbol.service';
 
 @Component({
   selector: 'overview-cards',
@@ -21,6 +22,7 @@ export class OverviewCardsComponent implements OnInit {
   ];
 
   private alphaVantageService = inject(AlphaVantageService);
+  private symbolService = inject(SymbolService);
 
   ngOnInit() {
     this.fetchOverviewData();
@@ -61,5 +63,10 @@ export class OverviewCardsComponent implements OnInit {
     const change = ((close - open) / open) * 100;
 
     return change.toFixed(2);
+  }
+
+  // set the selected symbol in the symbol service
+  selectSymbol(ticker: string) {
+    this.symbolService.setSymbol(ticker);
   }
 }

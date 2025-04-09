@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlphaVantageService } from '../../services/alpha-vantage.service';
 import { inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
+import { SymbolService } from '../../services/symbol.service';
 
 @Component({
   selector: 'app-stock-data',
@@ -15,29 +15,18 @@ import { ChartConfiguration, ChartData } from 'chart.js';
   styleUrls: ['./stock-data.component.css'],
 })
 export class StockDataComponent implements OnInit {
-  // Input and status fields
   symbolInput = '';
+  currentSymbol = 'DOW';
   loading = false;
+  stockData: any[] = [];
+  stockInfo: any = {};
   successMessage = '';
   errorMessage = '';
 
-  // Current displayed symbol
-  currentSymbol = 'DOW';
-
-  // Stock data
-  stockData: any[] = [];
-  stockInfo: any = {
-    symbol: 'DOW',
-    latestPrice: 'Loading...',
-    latestDate: 'Loading...',
-    previousClose: 'Loading...',
-    high: 'Loading...',
-    low: 'Loading...',
-    volume: 'Loading...',
-  };
-
-  // Chart properties
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
+
+  private alphaVantageService = inject(AlphaVantageService);
+  private symbolService = inject(SymbolService);
 
   chartData: ChartData = {
     labels: [],
@@ -46,8 +35,9 @@ export class StockDataComponent implements OnInit {
         data: [],
         label: 'Stock Price',
         borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
         tension: 0.1,
-        fill: false,
+        fill: true,
       },
     ],
   };
@@ -75,56 +65,37 @@ export class StockDataComponent implements OnInit {
     },
   };
 
-  // Service injections
-  private alphaVantageService = inject(AlphaVantageService);
-  private route = inject(ActivatedRoute);
-
   ngOnInit() {
-    // Check route params for symbol
-    this.route.queryParams.subscribe((params) => {
-      if (params['symbol']) {
-        this.currentSymbol = params['symbol'];
-        this.symbolInput = params['symbol'];
-      }
-
-      // Load data for the current symbol
-      this.loadStockData(this.currentSymbol);
+    this.symbolService.symbol$.subscribe((symbol) => {
+      this.currentSymbol = symbol;
+      this.symbolInput = symbol;
+      this.loadStockData(symbol);
     });
+
+    this.loadStockData(this.currentSymbol);
   }
 
-  // Load stock data from API
   loadStockData(symbol: string) {
     this.loading = true;
-    this.errorMessage = '';
-
     this.alphaVantageService.getStockDataFromDb(symbol).subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          // Get the last 7 days of data
-          this.stockData = data.slice(0, 7);
-
-          // Update chart with data
-          this.updateChart();
-
-          // Update stock info section
-          this.updateStockInfo();
-
-          this.loading = false;
-        } else {
-          this.errorMessage = `No data found for ${symbol}`;
-          this.loading = false;
-        }
+        this.stockData = data.slice(0, 7);
+        this.updateChart();
+        this.updateStockInfo();
+        this.loading = false;
       },
       error: (err) => {
-        this.errorMessage = `Error loading data for ${symbol}: ${err.message}`;
+        console.error(`Error loading data for ${symbol}: ${err.message}`);
         this.loading = false;
       },
     });
   }
 
-  // Update chart with stock data
   updateChart() {
-    if (this.stockData.length === 0) return;
+    if (this.stockData.length === 0) {
+      console.warn('No stock data available to update the chart.');
+      return;
+    }
 
     const dates = this.stockData.map((day) => day.date).reverse();
     const prices = this.stockData.map((day) => parseFloat(day.close)).reverse();
@@ -143,7 +114,6 @@ export class StockDataComponent implements OnInit {
       ],
     };
 
-    // Update chart title
     if (
       this.chartOptions &&
       this.chartOptions.plugins &&
@@ -152,18 +122,20 @@ export class StockDataComponent implements OnInit {
       this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last 7 Days`;
     }
 
-    // Force chart update if it exists
     if (this.chart) {
       this.chart.update();
     }
   }
 
-  // Update stock info section
   updateStockInfo() {
-    if (this.stockData.length === 0) return;
+    if (this.stockData.length === 0) {
+      console.warn('No stock data available to update stock info.');
+      this.stockInfo = null;
+      return;
+    }
 
-    const latestData = this.stockData[0]; // Most recent day
-    const previousData = this.stockData.length > 1 ? this.stockData[1] : null; // Previous day
+    const latestData = this.stockData[0];
+    const previousData = this.stockData.length > 1 ? this.stockData[1] : null;
 
     this.stockInfo = {
       symbol: this.currentSymbol,
@@ -180,7 +152,6 @@ export class StockDataComponent implements OnInit {
     };
   }
 
-  // Calculate percentage change
   calculateChange(current: string, previous: string): string {
     const currentValue = parseFloat(current);
     const previousValue = parseFloat(previous);

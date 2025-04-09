@@ -12,8 +12,8 @@
                         [ngClass]="{'text-success': ticker.data?.change > 0, 'text-danger': ticker.data?.change < 0}">
                         Change: {{ ticker.data?.change || 'Loading...' }}%
                     </p>
-                    <a [routerLink]="['/stock-data']" [queryParams]="{symbol: ticker.ticker}"
-                        class="card-link mt-auto">View Details</a>
+                    <a (click)="selectSymbol(ticker.ticker)" class="card-link mt-auto" style="cursor: pointer">View
+                        Details</a>
                 </div>
             </div>
         </div>

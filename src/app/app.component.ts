@@ -6,12 +6,14 @@ import { OverviewCardsComponent } from './components/overview-cards/overview-car
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavComponent, OverviewCardsComponent],
+  imports: [RouterOutlet, NavComponent],
   template: `
     <h1>{{ title }}</h1>
     <app-nav></app-nav>
-    <overview-cards></overview-cards>
-    <router-outlet></router-outlet>
+    <main>
+      <!-- <overview-cards></overview-cards> -->
+      <router-outlet></router-outlet>
+    </main>
   `,
   styleUrl: './app.component.css',
 })
