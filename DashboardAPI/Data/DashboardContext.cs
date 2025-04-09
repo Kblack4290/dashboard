@@ -13,9 +13,11 @@ namespace DashboardAPI.Data
 
         public DbSet<DashboardModel> DashboardItems { get; set; }
         public DbSet<StockData> StockData { get; set; }
+        public DbSet<WatchlistItem> WatchlistItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Configure StockData entity
             modelBuilder.Entity<StockData>(entity =>
             {
                 entity.ToTable("StockData");
@@ -24,6 +26,16 @@ namespace DashboardAPI.Data
                 entity.Property(e => e.Date).IsRequired();
 
                 entity.HasIndex(e => new { e.Symbol, e.Date });
+            });
+
+            // Configure WatchlistItem entity
+            modelBuilder.Entity<WatchlistItem>(entity =>
+            {
+                entity.ToTable("WatchlistItems");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Symbol).IsRequired();
+                entity.Property(e => e.Name).IsRequired();
+                entity.Property(e => e.DateAdded).IsRequired();
             });
         }
     }

@@ -1,1 +1,32 @@
-<p>watchlist works!</p>
+<div class="container mt-4">
+    <h2>Watchlist</h2>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Latest Price</th>
+                <th>Previous Close</th>
+                <th>Day Range</th>
+                <th>Volume</th>
+                <th>Change (%)</th>
+                <th>Date Added</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let item of watchlist" [ngClass]="{
+                'table-success': item.changePercentage > 0,
+                'table-danger': item.changePercentage < 0
+            }">
+                <td>{{ item.symbol }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.latestPrice }}</td>
+                <td>{{ item.previousClose }}</td>
+                <td>{{ item.dayRange }}</td>
+                <td>{{ item.volume | number }}</td>
+                <td>{{ item.changePercentage }}%</td>
+                <td>{{ item.dateAdded | date }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

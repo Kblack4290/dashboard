@@ -21,4 +21,17 @@ namespace DashboardAPI.Models
         public string Volume { get; set; }
     }
 
+    public class WatchlistItem
+    {
+        public int Id { get; set; }
+        public string Symbol { get; set; }
+        public string Name { get; set; }
+        public string LatestPrice { get; set; }
+        public string PreviousClose { get; set; }
+        public string DayRange { get; set; }
+        public string Volume { get; set; }
+        public string ChangePercentage { get; set; }
+        public DateTime DateAdded { get; set; }
+    }
+
 }

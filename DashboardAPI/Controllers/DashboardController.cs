@@ -95,7 +95,13 @@ namespace DashboardAPI.Controllers
             try
             {
                 _logger.LogInformation($"Received request to save data for symbol: {symbol}");
-                var timeSeriesDaily = data.GetProperty("Time Series (Daily)");
+                _logger.LogInformation($"Incoming JSON payload: Possible API KEY limit reached");
+
+                if (!data.TryGetProperty("Time Series (Daily)", out var timeSeriesDaily))
+                {
+                    _logger.LogError("The key 'Time Series (Daily)' was not found in the JSON payload.");
+                    return BadRequest(new { message = "Invalid JSON payload. 'Time Series (Daily)' key is missing." });
+                }
 
                 foreach (var date in timeSeriesDaily.EnumerateObject())
                 {
@@ -121,6 +127,113 @@ namespace DashboardAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error saving stock data for symbol: {symbol}");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // Add a stock to the watchlist
+        [HttpPost("watchlist")]
+        public async Task<IActionResult> AddToWatchlist([FromBody] WatchlistItem item)
+        {
+            try
+            {
+                var existingItem = await _context.WatchlistItems
+                    .FirstOrDefaultAsync(w => w.Symbol == item.Symbol);
+
+                if (existingItem != null)
+                {
+                    return BadRequest(new { message = "Item is already in the watchlist." });
+                }
+
+                item.DateAdded = DateTime.UtcNow;
+                _context.WatchlistItems.Add(item);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Item added to watchlist." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding item to watchlist.");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // Remove a stock from the watchlist
+        [HttpDelete("watchlist/{symbol}")]
+        public async Task<IActionResult> RemoveFromWatchlist(string symbol)
+        {
+            try
+            {
+                var item = await _context.WatchlistItems
+                    .FirstOrDefaultAsync(w => w.Symbol == symbol);
+
+                if (item == null)
+                {
+                    return NotFound(new { message = "Item not found in watchlist." });
+                }
+
+                _context.WatchlistItems.Remove(item);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Item removed from watchlist." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing item from watchlist.");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // Get all watchlist items
+        [HttpGet("watchlist")]
+        public async Task<IActionResult> GetWatchlist()
+        {
+            try
+            {
+                var watchlist = await _context.WatchlistItems.ToListAsync();
+                return Ok(watchlist);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving watchlist.");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("fetch/{symbol}")]
+        public async Task<IActionResult> FetchStockData(string symbol)
+        {
+            try
+            {
+                var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY");
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    return BadRequest(new { message = "API key is not configured." });
+                }
+
+                var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={apiKey}";
+                using var httpClient = new HttpClient();
+                var response = await httpClient.GetStringAsync(url);
+
+                // Parse the response to check for error messages
+                var jsonResponse = JsonDocument.Parse(response);
+                if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
+                {
+                    _logger.LogWarning($"Alpha Vantage API returned an information message: {infoMessage}");
+                    return BadRequest(new { message = "API rate limit exceeded or invalid request." });
+                }
+
+                if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
+                {
+                    _logger.LogError($"Alpha Vantage API returned an error: {errorMessage}");
+                    return BadRequest(new { message = "Error fetching stock data. Please try again later." });
+                }
+
+                return Ok(jsonResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching stock data for symbol: {symbol}");
                 return BadRequest(new { message = ex.Message });
             }
         }

@@ -3,6 +3,7 @@ using System;
 using DashboardAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DashboardAPI.Migrations
 {
     [DbContext(typeof(DashboardContext))]
-    partial class DashboardContextModelSnapshot : ModelSnapshot
+    [Migration("20250409202432_AddWatchlistItems")]
+    partial class AddWatchlistItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

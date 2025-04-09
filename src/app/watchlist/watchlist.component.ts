@@ -1,11 +1,22 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { AlphaVantageService } from '../services/alpha-vantage.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './watchlist.component.html',
-  styleUrl: './watchlist.component.css'
+  styleUrls: ['./watchlist.component.css'],
 })
-export class WatchlistComponent {
+export class WatchlistComponent implements OnInit {
+  watchlist: any[] = [];
 
+  constructor(private alphaVantageService: AlphaVantageService) {}
+
+  ngOnInit() {
+    this.alphaVantageService.getWatchlist().subscribe((data) => {
+      this.watchlist = data;
+    });
+  }
 }
