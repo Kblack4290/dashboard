@@ -95,7 +95,7 @@ export class StockDataComponent implements OnInit {
     this.loading = true;
     this.alphaVantageService.getStockData(symbol).subscribe({
       next: (data) => {
-        if (!data || !Array.isArray(data)) {
+        if (!data) {
           this.errorMessage = 'Invalid data format received from the server.';
           this.loading = false;
           return;
