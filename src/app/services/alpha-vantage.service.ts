@@ -20,6 +20,11 @@ export class AlphaVantageService {
     return this.http.get<any>(`${this.apiUrl}/fetch/${symbol}`);
   }
 
+  // Get stock data directly from the database for a specific symbol
+  getStockDataFromDb(symbol: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${symbol}`);
+  }
+
   // Getting latest data for all tickers from the database
   getLatestStockData(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/latest`);

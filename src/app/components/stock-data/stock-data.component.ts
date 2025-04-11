@@ -93,10 +93,13 @@ export class StockDataComponent implements OnInit {
 
   loadStockData(symbol: string) {
     this.loading = true;
-    this.alphaVantageService.getStockData(symbol).subscribe({
+    this.errorMessage = '';
+
+    // Get data directly from the database instead of fetching from Alpha Vantage
+    this.alphaVantageService.getStockDataFromDb(symbol).subscribe({
       next: (data) => {
-        if (!data) {
-          this.errorMessage = 'Invalid data format received from the server.';
+        if (!data || data.length === 0) {
+          this.errorMessage = `No data found for ${symbol}`;
           this.loading = false;
           return;
         }
