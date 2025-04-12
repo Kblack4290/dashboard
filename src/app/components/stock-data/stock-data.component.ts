@@ -33,6 +33,9 @@ export class StockDataComponent implements OnInit {
   isBrowser: boolean;
   isInWatchlist = false;
 
+  // View toggle properties
+  timeRange: '7d' | '30d' = '7d';
+
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
 
   private alphaVantageService = inject(AlphaVantageService);
@@ -104,7 +107,10 @@ export class StockDataComponent implements OnInit {
           return;
         }
 
-        this.stockData = data.slice(0, 7);
+        // Store all available data (up to 30 days)
+        this.stockData = data.slice(0, 30);
+
+        // Update the chart based on current timeRange
         this.updateChart();
         this.updateStockInfo();
         this.loading = false;
@@ -117,14 +123,35 @@ export class StockDataComponent implements OnInit {
     });
   }
 
+  // Toggle between 7-day and 30-day views
+  toggleTimeRange() {
+    this.timeRange = this.timeRange === '7d' ? '7d' : '30d';
+    this.updateChart();
+
+    // Update chart title
+    if (this.chartOptions?.plugins?.title) {
+      this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last ${
+        this.timeRange === '7d' ? '7' : '30'
+      } Days`;
+    }
+
+    if (this.chart) {
+      this.chart.update();
+    }
+  }
+
   updateChart() {
     if (this.stockData.length === 0) {
       console.warn('No stock data available to update the chart.');
       return;
     }
 
-    const dates = this.stockData.map((day) => day.date).reverse();
-    const prices = this.stockData.map((day) => parseFloat(day.close)).reverse();
+    // Use all data for 30d view, or just first 7 items for 7d view
+    const displayData =
+      this.timeRange === '7d' ? this.stockData.slice(0, 7) : this.stockData;
+
+    const dates = displayData.map((day) => day.date).reverse();
+    const prices = displayData.map((day) => parseFloat(day.close)).reverse();
 
     this.chartData = {
       labels: dates,
@@ -145,7 +172,9 @@ export class StockDataComponent implements OnInit {
       this.chartOptions.plugins &&
       this.chartOptions.plugins.title
     ) {
-      this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last 7 Days`;
+      this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last ${
+        this.timeRange === '7d' ? '7' : '30'
+      } Days`;
     }
 
     if (this.chart) {
