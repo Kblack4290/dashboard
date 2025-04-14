@@ -1,5 +1,6 @@
 using DashboardAPI.Data;
 using DashboardAPI.Services;
+using DashboardAPI.Controllers;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
 
@@ -32,6 +33,9 @@ builder.Services.AddSingleton<IConfiguration>(provider =>
         .Build();
     return config;
 });
+
+// Register the controller
+builder.Services.AddScoped<AlphaVantageController>();
 
 // Configure HttpClient for making API requests
 builder.Services.AddHostedService<AlphaVantageSchedulerService>();

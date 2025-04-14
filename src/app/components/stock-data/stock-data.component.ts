@@ -251,6 +251,9 @@ export class StockDataComponent implements OnInit {
 
               // Load data to display chart and info
               this.loadStockData(this.symbolInput);
+              
+              // Check if this symbol is in the watchlist to update button state
+              this.checkWatchlist(this.currentSymbol);
             },
             error: (err) => {
               this.errorMessage = `Failed to save data: ${err.message}`;
@@ -268,10 +271,18 @@ export class StockDataComponent implements OnInit {
   checkWatchlist(symbol: string) {
     this.alphaVantageService
       .getWatchlist()
-      .subscribe((watchlist: WatchlistItem[]) => {
-        this.isInWatchlist = watchlist.some(
-          (item: WatchlistItem) => item.symbol === symbol
-        );
+      .subscribe({
+        next: (watchlist: WatchlistItem[]) => {
+          // Convert both to uppercase for case-insensitive comparison
+          const upperSymbol = symbol.toUpperCase();
+          this.isInWatchlist = watchlist.some(
+            (item: WatchlistItem) => item.symbol.toUpperCase() === upperSymbol
+          );
+        },
+        error: (err) => {
+          console.error('Error checking watchlist:', err);
+          this.isInWatchlist = false;
+        }
       });
   }
 
@@ -284,9 +295,19 @@ export class StockDataComponent implements OnInit {
     if (this.isInWatchlist) {
       this.alphaVantageService
         .removeFromWatchlist(this.currentSymbol)
-        .subscribe(() => {
-          this.isInWatchlist = false;
-          this.successMessage = `${this.currentSymbol} removed from watchlist.`;
+        .subscribe({
+          next: () => {
+            this.isInWatchlist = false;
+            this.successMessage = `${this.currentSymbol} removed from watchlist.`;
+            // Re-check watchlist to confirm status
+            this.checkWatchlist(this.currentSymbol);
+          },
+          error: (err) => {
+            this.errorMessage = `Error removing from watchlist: ${err.error?.message || err.message || 'Unknown error'}`;
+            console.error('Error removing from watchlist:', err);
+            // Re-check watchlist to confirm status
+            this.checkWatchlist(this.currentSymbol);
+          }
         });
     } else {
       const watchlistItem: WatchlistItem = {
@@ -303,9 +324,19 @@ export class StockDataComponent implements OnInit {
         dateAdded: new Date(),
       };
 
-      this.alphaVantageService.addToWatchlist(watchlistItem).subscribe(() => {
-        this.isInWatchlist = true;
-        this.successMessage = `${this.currentSymbol} added to watchlist.`;
+      this.alphaVantageService.addToWatchlist(watchlistItem).subscribe({
+        next: () => {
+          this.isInWatchlist = true;
+          this.successMessage = `${this.currentSymbol} added to watchlist.`;
+          // Re-check watchlist to confirm status
+          this.checkWatchlist(this.currentSymbol);
+        },
+        error: (err) => {
+          this.errorMessage = `Error adding to watchlist: ${err.error?.message || err.message || 'Unknown error'}`;
+          console.error('Error adding to watchlist:', err);
+          // Re-check watchlist to confirm status
+          this.checkWatchlist(this.currentSymbol);
+        }
       });
     }
   }

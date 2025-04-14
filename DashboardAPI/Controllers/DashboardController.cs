@@ -237,5 +237,55 @@ namespace DashboardAPI.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // Update watchlist items with latest stock data
+        public async Task UpdateWatchlistItems()
+        {
+            try
+            {
+                // Get all watchlist items
+                var watchlistItems = await _context.WatchlistItems.ToListAsync();
+
+                foreach (var item in watchlistItems)
+                {
+                    // Get latest stock data for this symbol
+                    var latestData = await _context.StockData
+                        .Where(s => s.Symbol == item.Symbol)
+                        .OrderByDescending(s => s.Date)
+                        .FirstOrDefaultAsync();
+
+                    // Get previous day's data for comparison
+                    var previousData = await _context.StockData
+                        .Where(s => s.Symbol == item.Symbol)
+                        .OrderByDescending(s => s.Date)
+                        .Skip(1)
+                        .FirstOrDefaultAsync();
+
+                    if (latestData != null)
+                    {
+                        // Update the watchlist item
+                        item.LatestPrice = latestData.Close;
+                        item.PreviousClose = previousData?.Close ?? "N/A";
+                        item.DayRange = $"{latestData.Low} - {latestData.High}";
+                        item.Volume = latestData.Volume;
+
+                        // Calculate change percentage
+                        if (previousData != null)
+                        {
+                            var open = float.Parse(previousData.Close);
+                            var close = float.Parse(latestData.Close);
+                            var change = ((close - open) / open) * 100;
+                            item.ChangePercentage = change.ToString("0.00");
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating watchlist items");
+            }
+        }
     }
 }

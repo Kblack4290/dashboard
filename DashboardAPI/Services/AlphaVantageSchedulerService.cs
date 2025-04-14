@@ -5,10 +5,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using DashboardAPI.Controllers;
 
 namespace DashboardAPI.Services
 {
@@ -44,6 +46,13 @@ namespace DashboardAPI.Services
                 try
                 {
                     await FetchAndStoreAllTickerData();
+
+                    // Update watchlist items with latest data
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var controller = scope.ServiceProvider.GetRequiredService<AlphaVantageController>();
+                        await controller.UpdateWatchlistItems();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -63,45 +72,68 @@ namespace DashboardAPI.Services
         // getting all ticker data to save to postgresql to minimize the number of requests to Alpha Vantage
         private async Task FetchAndStoreAllTickerData()
         {
+
             foreach (var ticker in _tickers)
             {
-                try
+                await FetchAndStoreTickerData(ticker);
+            }
+
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<DashboardContext>();
+                var watchlistSymbols = await dbContext.WatchlistItems
+                    .Select(w => w.Symbol)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var symbol in watchlistSymbols)
                 {
-                    _logger.LogInformation("Fetching data for {ticker}", ticker);
-
-                    // Fetch from Alpha Vantage
-                    var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey={_apiKey}";
-                    var response = await _httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-
-                    var content = await response.Content.ReadAsStringAsync();
-
-                    var data = JsonDocument.Parse(content);
-
-                    if (data.RootElement.TryGetProperty("Information", out JsonElement infoElement))
+                    if (!_tickers.Contains(symbol))
                     {
-                        string infoMessage = infoElement.GetString();
-                        if (infoMessage != null && infoMessage.Contains("API key") && infoMessage.Contains("rate limit"))
-                        {
-                            _logger.LogWarning("You have reached your API limit for {ticker}", ticker);
-                            continue;
-                        }
+                        await FetchAndStoreTickerData(symbol);
                     }
-
-                    // Store in database
-                    using (var scope = _scopeFactory.CreateScope())
-                    {
-                        var dbContext = scope.ServiceProvider.GetRequiredService<DashboardContext>();
-                        await StoreTickerData(dbContext, ticker, data.RootElement);
-                    }
-
-                    // Respect Alpha Vantage rate limits
-                    await Task.Delay(TimeSpan.FromSeconds(15));
                 }
-                catch (Exception ex)
+            }
+        }
+
+        private async Task FetchAndStoreTickerData(string ticker)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching data for {ticker}", ticker);
+
+                // Fetch from Alpha Vantage
+                var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey={_apiKey}";
+                var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                var data = JsonDocument.Parse(content);
+
+                // Check for rate limiting or errors
+                if (data.RootElement.TryGetProperty("Information", out JsonElement infoElement))
                 {
-                    _logger.LogError(ex, "Error processing ticker {ticker}", ticker);
+                    string infoMessage = infoElement.GetString();
+                    if (infoMessage != null && infoMessage.Contains("API key") && infoMessage.Contains("rate limit"))
+                    {
+                        _logger.LogWarning("You have reached your API limit for {ticker}", ticker);
+                        return;
+                    }
                 }
+
+                // Store in database
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<DashboardContext>();
+                    await StoreTickerData(dbContext, ticker, data.RootElement);
+                }
+
+                // Respect Alpha Vantage rate limits
+                await Task.Delay(TimeSpan.FromSeconds(15));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing ticker {ticker}", ticker);
             }
         }
 
