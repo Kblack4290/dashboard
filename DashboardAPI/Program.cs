@@ -19,8 +19,11 @@ var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('
 
 // Add services to the container.
 // Configure Entity Framework Core with PostgreSQL
+// builder.Services.AddDbContext<DashboardContext>(options =>
+//     options.UseNpgsql(connectionString));
+
 builder.Services.AddDbContext<DashboardContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register the API key for the background service
 builder.Services.AddSingleton<IConfiguration>(provider =>
@@ -68,6 +71,21 @@ app.UseCors("AllowAngular");
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<DashboardContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred applying migrations.");
+    }
 }
 
 app.MapControllers();
