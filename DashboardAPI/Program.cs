@@ -9,21 +9,18 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-if (connectionString != null)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (string.IsNullOrEmpty(connectionString))
 {
-    connectionString = connectionString.Trim('"');
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
 var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
 
 // Add services to the container.
 // Configure Entity Framework Core with PostgreSQL
-// builder.Services.AddDbContext<DashboardContext>(options =>
-//     options.UseNpgsql(connectionString));
-
 builder.Services.AddDbContext<DashboardContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Register the API key for the background service
 builder.Services.AddSingleton<IConfiguration>(provider =>
@@ -53,7 +50,9 @@ builder.Services.AddCors(options =>
         policyBuilder
             .WithOrigins(
                 "http://localhost:4200",
-                "https://localhost:4200"
+                "https://localhost:4200",
+                "https://your-frontend-app-name.onrender.com",
+                "https://dashboard-api.onrender.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
