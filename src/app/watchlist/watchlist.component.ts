@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, PLATFORM_ID, Inject } from '@angular/core';
 import { AlphaVantageService } from '../services/alpha-vantage.service';
 import { SymbolService } from '../services/symbol.service';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { switchMap, map } from 'rxjs/operators';
 import { combineLatest, from, of } from 'rxjs';
 
@@ -16,17 +16,34 @@ export class WatchlistComponent implements OnInit {
   watchlist: any[] = [];
   loading = true;
   errorMessage = '';
+  isBrowser: boolean;
 
   constructor(
     private alphaVantageService: AlphaVantageService,
-    private symbolService: SymbolService
-  ) {}
+    private symbolService: SymbolService,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+  }
 
   ngOnInit() {
-    this.loadWatchlist();
+    // Only load watchlist in browser environment
+    if (this.isBrowser) {
+      this.loadWatchlist();
+    } else {
+      // For server-side rendering, set empty state
+      this.watchlist = [];
+      this.loading = false;
+    }
   }
 
   loadWatchlist() {
+    // Skip if not in browser
+    if (!this.isBrowser) {
+      this.loading = false;
+      return;
+    }
+
     this.loading = true;
 
     this.alphaVantageService
