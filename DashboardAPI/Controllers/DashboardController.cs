@@ -226,7 +226,7 @@ namespace DashboardAPI.Controllers
 
                 if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
                 {
-                    _logger.LogError($"Alpha Vantage API returned an error: {errorMessage}");
+                    _logger.LogError("Alpha Vantage API returned an information message: API rate limit reached");
                     return BadRequest(new { message = "Error fetching stock data. Please try again later." });
                 }
 
@@ -307,13 +307,13 @@ namespace DashboardAPI.Controllers
                 var jsonResponse = JsonDocument.Parse(response);
                 if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
                 {
-                    _logger.LogWarning($"Alpha Vantage API returned an information message: {infoMessage}");
+                    _logger.LogWarning("Alpha Vantage API returned an information message: API rate limit reached");
                     return BadRequest(new { message = "API rate limit exceeded or invalid request." });
                 }
 
                 if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
                 {
-                    _logger.LogError($"Alpha Vantage API returned an error: {errorMessage}");
+                    _logger.LogError("Alpha Vantage API returned an information message: API rate limit reached");
                     return BadRequest(new { message = "Error fetching company overview. Please try again later." });
                 }
 
