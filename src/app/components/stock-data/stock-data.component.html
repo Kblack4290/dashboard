@@ -49,10 +49,13 @@
                 <div class="card-body">
                     <div *ngIf="stockInfo">
                         <p><strong>Symbol:</strong> {{ stockInfo.symbol }}</p>
-                        <p><strong>Latest Price:</strong> ${{ stockInfo.latestPrice }}</p>
+                        <p><strong>Latest Price:</strong> {{ stockInfo.latestPrice | currency: 'USD': 'symbol':'1.0-2'}}
+                        </p>
                         <p><strong>Date:</strong> {{ stockInfo.latestDate }}</p>
-                        <p><strong>Previous Close:</strong> ${{ stockInfo.previousClose }}</p>
-                        <p><strong>Day Range:</strong> ${{ stockInfo.low }} - ${{ stockInfo.high }}</p>
+                        <p><strong>Previous Close:</strong> {{ stockInfo.previousClose | currency: 'USD':
+                            'symbol':'1.0-2' }}</p>
+                        <p><strong>Day Range:</strong> {{ stockInfo.low | currency: 'USD': 'symbol':'1.0-2' }} - {{
+                            stockInfo.high | currency: 'USD': 'symbol':'1.0-2' }}</p>
                         <p><strong>Volume:</strong> {{ stockInfo.volume | number }}</p>
                         <p>
                             <strong>Change:</strong>

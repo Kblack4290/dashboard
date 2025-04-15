@@ -121,4 +121,18 @@ export class WatchlistComponent implements OnInit {
   refreshWatchlist() {
     this.loadWatchlist();
   }
+
+  formatDayRange(range: string): string {
+    if (!range) return 'N/A';
+    const parts = range.split(' - ');
+
+    if (parts.length !== 2) return range;
+
+    const low = parseFloat(parts[0].replace('$', ''));
+    const high = parseFloat(parts[1].replace('$', ''));
+
+    if (isNaN(low) || isNaN(high)) return range;
+
+    return `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+  }
 }

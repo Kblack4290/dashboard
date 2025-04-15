@@ -20,9 +20,9 @@
             }">
                 <td>{{ item.symbol }}</td>
                 <td>{{ item.name }}</td>
-                <td>{{ item.latestPrice }}</td>
-                <td>{{ item.previousClose }}</td>
-                <td>{{ item.dayRange }}</td>
+                <td>{{ item.latestPrice | currency: 'USD': 'symbol':'1.0-2' }}</td>
+                <td>{{ item.previousClose | currency: 'USD': 'symbol':'1.0-2' }}</td>
+                <td>{{ formatDayRange(item.dayRange) }}</td>
                 <td>{{ item.volume | number }}</td>
                 <td>{{ item.changePercentage }}%</td>
                 <td>{{ item.dateAdded | date }}</td>

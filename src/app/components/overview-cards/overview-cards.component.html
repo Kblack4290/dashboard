@@ -7,7 +7,8 @@
                     <h5 class="card-title">{{ ticker.name }}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{ ticker.ticker }}</h6>
                     <p class="card-text">
-                        Price: {{ ticker.data?.price || 'Loading...' }}
+                        Price: {{ ticker.data?.price ? (ticker.data.price | currency: 'USD': 'symbol':'1.0-2') :
+                        'Loading...' }}
                     </p>
                     <p class="card-text">
                         Change: {{ ticker.data?.change || 'Loading...' }}%
