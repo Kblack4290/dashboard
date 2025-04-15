@@ -9,10 +9,22 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load();
+}
+
+
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING").Trim('"');
+
 if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        Console.WriteLine("WARNING: Database connection string is missing!");
+    }
 }
 
 var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
@@ -20,7 +32,15 @@ var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('
 // Add services to the container.
 // Configure Entity Framework Core with PostgreSQL
 builder.Services.AddDbContext<DashboardContext>(options =>
-    options.UseNpgsql(connectionString));
+{
+    options.UseNpgsql(connectionString);
+
+    // Log connection string in development for debugging
+    if (builder.Environment.IsDevelopment())
+    {
+        Console.WriteLine($"Using connection string: {connectionString}");
+    }
+});
 
 // Register the API key for the background service
 builder.Services.AddSingleton<IConfiguration>(provider =>
@@ -51,7 +71,7 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:4200",
                 "https://localhost:4200",
-                "https://your-frontend-app-name.onrender.com",
+                "https://dashboard-app-x7u6.onrender.com",
                 "https://dashboard-api.onrender.com"
             )
             .AllowAnyMethod()
@@ -78,12 +98,20 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<DashboardContext>();
-        context.Database.Migrate();
+        if (context.Database.CanConnect())
+        {
+            context.Database.Migrate();
+        }
+        else
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError("Cannot connect to database with provided connection string.");
+        }
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred applying migrations.");
+        logger.LogError(ex, "!An error occurred applying migrations. Error: {Message}", ex.Message);
     }
 }
 
