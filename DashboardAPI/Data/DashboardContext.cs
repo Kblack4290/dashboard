@@ -14,6 +14,7 @@ namespace DashboardAPI.Data
         public DbSet<DashboardModel> DashboardItems { get; set; }
         public DbSet<StockData> StockData { get; set; }
         public DbSet<WatchlistItem> WatchlistItems { get; set; }
+        public DbSet<CompanyOverview> CompanyOverviews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -36,6 +37,20 @@ namespace DashboardAPI.Data
                 entity.Property(e => e.Symbol).IsRequired();
                 entity.Property(e => e.Name).IsRequired();
                 entity.Property(e => e.DateAdded).IsRequired();
+            });
+
+            // Configure CompanyOverview entity
+            modelBuilder.Entity<CompanyOverview>(entity =>
+            {
+                entity.ToTable("CompanyOverviews");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Symbol).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.Name).HasMaxLength(100);
+                entity.Property(e => e.Sector).HasMaxLength(50);
+                entity.Property(e => e.Industry).HasMaxLength(100);
+
+                // Create a unique index on Symbol to ensure we don't have duplicate entries
+                entity.HasIndex(e => e.Symbol).IsUnique();
             });
         }
     }

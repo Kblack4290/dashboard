@@ -11,7 +11,7 @@ import { WatchlistItem } from '../models/watchlist-item.model';
 export class AlphaVantageService {
   private apiKey = environment.alphaVantageApiKey;
   private baseUrl = 'https://www.alphavantage.co/query';
-  private apiUrl = 'http://localhost:5000/api/AlphaVantage';
+  private apiUrl = 'http://localhost:5000/api/Dashboard';
 
   constructor(private http: HttpClient) {}
 
@@ -48,5 +48,13 @@ export class AlphaVantageService {
   // Remove from watchlist
   removeFromWatchlist(symbol: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/watchlist/${symbol}`);
+  }
+
+  getCompanyOverview(symbol: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/company-overview/${symbol}`);
+  }
+
+  saveCompanyOverview(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/company-overview`, data);
   }
 }

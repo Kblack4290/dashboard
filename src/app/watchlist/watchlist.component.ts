@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { AlphaVantageService } from '../services/alpha-vantage.service';
+import { SymbolService } from '../services/symbol.service';
 import { CommonModule } from '@angular/common';
+import { switchMap, map } from 'rxjs/operators';
+import { combineLatest, from, of } from 'rxjs';
 
 @Component({
   selector: 'app-watchlist',
@@ -11,12 +14,111 @@ import { CommonModule } from '@angular/common';
 })
 export class WatchlistComponent implements OnInit {
   watchlist: any[] = [];
+  loading = true;
+  errorMessage = '';
 
-  constructor(private alphaVantageService: AlphaVantageService) {}
+  constructor(
+    private alphaVantageService: AlphaVantageService,
+    private symbolService: SymbolService
+  ) {}
 
   ngOnInit() {
-    this.alphaVantageService.getWatchlist().subscribe((data) => {
-      this.watchlist = data;
+    this.loadWatchlist();
+  }
+
+  loadWatchlist() {
+    this.loading = true;
+
+    this.alphaVantageService
+      .getWatchlist()
+      .pipe(
+        switchMap((watchlist) => {
+          if (watchlist.length === 0) {
+            this.loading = false;
+            return of([]);
+          }
+
+          const enrichedWatchlistItems = watchlist.map((item) =>
+            this.symbolService.getCompanyName(item.symbol).pipe(
+              map((companyName) => ({
+                ...item,
+                name: companyName,
+              }))
+            )
+          );
+
+          return combineLatest(enrichedWatchlistItems);
+        })
+      )
+      .subscribe({
+        next: (enrichedWatchlist) => {
+          this.watchlist = enrichedWatchlist;
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error loading watchlist:', err);
+          this.errorMessage = 'Failed to load watchlist';
+          this.loading = false;
+        },
+      });
+  }
+
+  loadWatchlistSequential() {
+    this.loading = true;
+
+    this.alphaVantageService.getWatchlist().subscribe({
+      next: (watchlist) => {
+        if (watchlist.length === 0) {
+          this.watchlist = [];
+          this.loading = false;
+          return;
+        }
+
+        const enrichedWatchlist: any[] = [];
+        let processed = 0;
+
+        watchlist.forEach((item) => {
+          this.symbolService.getCompanyName(item.symbol).subscribe({
+            next: (companyName) => {
+              enrichedWatchlist.push({
+                ...item,
+                name: companyName,
+              });
+
+              processed++;
+              if (processed === watchlist.length) {
+                this.watchlist = enrichedWatchlist;
+                this.loading = false;
+              }
+            },
+            error: (err) => {
+              console.error(
+                `Error fetching company name for ${item.symbol}:`,
+                err
+              );
+              enrichedWatchlist.push({
+                ...item,
+                name: item.symbol,
+              });
+
+              processed++;
+              if (processed === watchlist.length) {
+                this.watchlist = enrichedWatchlist;
+                this.loading = false;
+              }
+            },
+          });
+        });
+      },
+      error: (err) => {
+        console.error('Error loading watchlist:', err);
+        this.errorMessage = 'Failed to load watchlist';
+        this.loading = false;
+      },
     });
+  }
+
+  refreshWatchlist() {
+    this.loadWatchlist();
   }
 }

@@ -12,15 +12,17 @@ namespace DashboardAPI.Controllers
     [ApiController]
 
     // This controller handles requests related to stock data from Alpha Vantage
-    public class AlphaVantageController : ControllerBase
+    public class DashboardController : ControllerBase
     {
         private readonly DashboardContext _context;
-        private readonly ILogger<AlphaVantageController> _logger;
+        private readonly ILogger<DashboardController> _logger;
+        private readonly HttpClient _httpClient;
 
-        public AlphaVantageController(DashboardContext context, ILogger<AlphaVantageController> logger)
+        public DashboardController(DashboardContext context, ILogger<DashboardController> logger, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _logger = logger;
+            _httpClient = httpClientFactory.CreateClient();
         }
 
         // Getting the latest stock data for all tickers
@@ -212,8 +214,7 @@ namespace DashboardAPI.Controllers
                 }
 
                 var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={apiKey}";
-                using var httpClient = new HttpClient();
-                var response = await httpClient.GetStringAsync(url);
+                var response = await _httpClient.GetStringAsync(url);
 
                 // Parse the response to check for error messages
                 var jsonResponse = JsonDocument.Parse(response);
@@ -285,6 +286,78 @@ namespace DashboardAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating watchlist items");
+            }
+        }
+
+        [HttpGet("company-overview/{symbol}")]
+        public async Task<IActionResult> GetCompanyOverview(string symbol)
+        {
+            try
+            {
+                var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY");
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    return BadRequest(new { message = "API key is not configured." });
+                }
+
+                var url = $"https://www.alphavantage.co/query?function=OVERVIEW&symbol={symbol}&apikey={apiKey}";
+                var response = await _httpClient.GetStringAsync(url);
+
+                // Parse the response to check for error messages
+                var jsonResponse = JsonDocument.Parse(response);
+                if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
+                {
+                    _logger.LogWarning($"Alpha Vantage API returned an information message: {infoMessage}");
+                    return BadRequest(new { message = "API rate limit exceeded or invalid request." });
+                }
+
+                if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
+                {
+                    _logger.LogError($"Alpha Vantage API returned an error: {errorMessage}");
+                    return BadRequest(new { message = "Error fetching company overview. Please try again later." });
+                }
+
+                return Ok(jsonResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching company overview for symbol: {symbol}");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("company-overview")]
+        public async Task<IActionResult> SaveCompanyOverview([FromBody] CompanyOverview data)
+        {
+            try
+            {
+                // Check if company overview already exists
+                var existingOverview = await _context.CompanyOverviews
+                    .FirstOrDefaultAsync(c => c.Symbol == data.Symbol);
+
+                if (existingOverview != null)
+                {
+                    // Update existing record
+                    existingOverview.Name = data.Name;
+                    existingOverview.Description = data.Description;
+                    existingOverview.Sector = data.Sector;
+                    existingOverview.Industry = data.Industry;
+                    existingOverview.LastUpdated = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Add new record
+                    data.LastUpdated = DateTime.UtcNow;
+                    _context.CompanyOverviews.Add(data);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Company overview saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error saving company overview for symbol: {data.Symbol}");
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

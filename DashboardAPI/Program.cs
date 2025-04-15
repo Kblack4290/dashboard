@@ -35,9 +35,10 @@ builder.Services.AddSingleton<IConfiguration>(provider =>
 });
 
 // Register the controller
-builder.Services.AddScoped<AlphaVantageController>();
+builder.Services.AddScoped<DashboardController>();
 
 // Configure HttpClient for making API requests
+builder.Services.AddHttpClient();
 builder.Services.AddHostedService<AlphaVantageSchedulerService>();
 
 // cors policy to allow requests from Angular frontend

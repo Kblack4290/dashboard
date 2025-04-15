@@ -50,7 +50,7 @@ namespace DashboardAPI.Services
                     // Update watchlist items with latest data
                     using (var scope = _scopeFactory.CreateScope())
                     {
-                        var controller = scope.ServiceProvider.GetRequiredService<AlphaVantageController>();
+                        var controller = scope.ServiceProvider.GetRequiredService<DashboardController>();
                         await controller.UpdateWatchlistItems();
                     }
                 }

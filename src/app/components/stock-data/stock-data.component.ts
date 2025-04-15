@@ -32,6 +32,7 @@ export class StockDataComponent implements OnInit {
   errorMessage = '';
   isBrowser: boolean;
   isInWatchlist = false;
+  companyInfo: any;
 
   // View toggle properties
   timeRange: '7d' | '30d' = '7d';
@@ -90,6 +91,13 @@ export class StockDataComponent implements OnInit {
       this.checkWatchlist(symbol);
     });
 
+    this.symbolService.companyInfo$.subscribe((info) => {
+      if (info) {
+        this.companyInfo = info;
+        this.updateChartTitle();
+      }
+    });
+
     this.loadStockData(this.currentSymbol);
     this.checkWatchlist(this.currentSymbol);
   }
@@ -129,11 +137,7 @@ export class StockDataComponent implements OnInit {
     this.updateChart();
 
     // Update chart title
-    if (this.chartOptions?.plugins?.title) {
-      this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last ${
-        this.timeRange === '7d' ? '7' : '30'
-      } Days`;
-    }
+    this.updateChartTitle();
 
     if (this.chart) {
       this.chart.update();
@@ -167,18 +171,19 @@ export class StockDataComponent implements OnInit {
       ],
     };
 
-    if (
-      this.chartOptions &&
-      this.chartOptions.plugins &&
-      this.chartOptions.plugins.title
-    ) {
-      this.chartOptions.plugins.title.text = `${this.currentSymbol} - Last ${
-        this.timeRange === '7d' ? '7' : '30'
-      } Days`;
-    }
+    this.updateChartTitle();
 
     if (this.chart) {
       this.chart.update();
+    }
+  }
+
+  updateChartTitle() {
+    if (this.chartOptions?.plugins?.title && this.companyInfo) {
+      const companyName = this.companyInfo.name || this.currentSymbol;
+      this.chartOptions.plugins.title.text = `${companyName} (${
+        this.currentSymbol
+      }) - Last ${this.timeRange === '7d' ? '7' : '30'} Days`;
     }
   }
 
@@ -251,7 +256,7 @@ export class StockDataComponent implements OnInit {
 
               // Load data to display chart and info
               this.loadStockData(this.symbolInput);
-              
+
               // Check if this symbol is in the watchlist to update button state
               this.checkWatchlist(this.currentSymbol);
             },
@@ -269,21 +274,18 @@ export class StockDataComponent implements OnInit {
   }
 
   checkWatchlist(symbol: string) {
-    this.alphaVantageService
-      .getWatchlist()
-      .subscribe({
-        next: (watchlist: WatchlistItem[]) => {
-          // Convert both to uppercase for case-insensitive comparison
-          const upperSymbol = symbol.toUpperCase();
-          this.isInWatchlist = watchlist.some(
-            (item: WatchlistItem) => item.symbol.toUpperCase() === upperSymbol
-          );
-        },
-        error: (err) => {
-          console.error('Error checking watchlist:', err);
-          this.isInWatchlist = false;
-        }
-      });
+    this.alphaVantageService.getWatchlist().subscribe({
+      next: (watchlist: WatchlistItem[]) => {
+        const upperSymbol = symbol.toUpperCase();
+        this.isInWatchlist = watchlist.some(
+          (item: WatchlistItem) => item.symbol.toUpperCase() === upperSymbol
+        );
+      },
+      error: (err) => {
+        console.error('Error checking watchlist:', err);
+        this.isInWatchlist = false;
+      },
+    });
   }
 
   toggleWatchlist() {
@@ -303,11 +305,13 @@ export class StockDataComponent implements OnInit {
             this.checkWatchlist(this.currentSymbol);
           },
           error: (err) => {
-            this.errorMessage = `Error removing from watchlist: ${err.error?.message || err.message || 'Unknown error'}`;
+            this.errorMessage = `Error removing from watchlist: ${
+              err.error?.message || err.message || 'Unknown error'
+            }`;
             console.error('Error removing from watchlist:', err);
             // Re-check watchlist to confirm status
             this.checkWatchlist(this.currentSymbol);
-          }
+          },
         });
     } else {
       const watchlistItem: WatchlistItem = {
@@ -332,11 +336,13 @@ export class StockDataComponent implements OnInit {
           this.checkWatchlist(this.currentSymbol);
         },
         error: (err) => {
-          this.errorMessage = `Error adding to watchlist: ${err.error?.message || err.message || 'Unknown error'}`;
+          this.errorMessage = `Error adding to watchlist: ${
+            err.error?.message || err.message || 'Unknown error'
+          }`;
           console.error('Error adding to watchlist:', err);
           // Re-check watchlist to confirm status
           this.checkWatchlist(this.currentSymbol);
-        }
+        },
       });
     }
   }
