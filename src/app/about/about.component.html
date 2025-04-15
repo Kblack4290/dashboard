@@ -1,1 +1,87 @@
-<p>about works!</p>
+<div class="about-container">
+    <h1>About Financial Dashboard</h1>
+
+    <section class="about-section">
+        <h2>Application Overview</h2>
+        <p>
+            The Financial Dashboard is a comprehensive tool designed to help users monitor and analyze stock market
+            data.
+            This application provides real-time stock information, historical price charts, and personalized watchlists
+            to help users make informed investment decisions.
+        </p>
+    </section>
+
+    <section class="about-section">
+        <h2>Key Features</h2>
+        <ul>
+            <li><strong>Stock Data Visualization:</strong> View interactive charts of stock price history with 7-day and
+                30-day views</li>
+            <li><strong>Stock Search:</strong> Look up any stock by its symbol to get the latest price data and
+                performance metrics</li>
+            <li><strong>Personalized Watchlist:</strong> Save your favorite stocks to a watchlist for quick access and
+                monitoring</li>
+            <li><strong>Automated Data Updates:</strong> Scheduled service fetches the latest market data to keep
+                information current</li>
+        </ul>
+    </section>
+
+    <section class="about-section">
+        <h2>Technology Stack</h2>
+        <h3>Frontend</h3>
+        <ul>
+            <li><strong>Framework:</strong> Angular (Standalone Components)</li>
+            <li><strong>Charting:</strong> ng2-charts (Chart.js)</li>
+            <li><strong>Styling:</strong> CSS with responsive design</li>
+        </ul>
+
+        <h3>Backend</h3>
+        <ul>
+            <li><strong>Framework:</strong> ASP.NET Core</li>
+            <li><strong>Database:</strong> PostgreSQL with Entity Framework Core and migrations</li>
+            <li><strong>API Integration:</strong> Alpha Vantage API for stock market data</li>
+            <li><strong>Background Services:</strong> Scheduled data fetching with .NET background services</li>
+        </ul>
+    </section>
+
+    <section class="about-section">
+        <h2>How to Use</h2>
+        <ol>
+            <li>
+                <strong>View Stock Data:</strong> Enter a stock symbol (e.g., AAPL, MSFT, GOOG) in the search box and
+                click "Search"
+                to view the latest data and price charts.
+            </li>
+            <li>
+                <strong>Toggle Time Range:</strong> Switch between 7-day and 30-day views to analyze short and
+                medium-term trends.
+            </li>
+            <li>
+                <strong>Manage Your Watchlist:</strong> Add stocks to your watchlist by clicking the "Add to Watchlist"
+                button while
+                viewing a stock. Remove them by clicking the "Remove from Watchlist" button.
+            </li>
+            <li>
+                <strong>Access Your Watchlist:</strong> Navigate to the Watchlist page to see all your saved stocks in
+                one place with
+                their latest performance metrics.
+            </li>
+        </ol>
+    </section>
+
+    <section class="about-section">
+        <h2>Data Source</h2>
+        <p>
+            This application uses stock market data provided by the Alpha Vantage API. The data is cached in our
+            PostgreSQL database
+            and updated regularly to ensure accuracy while minimizing external API calls.
+        </p>
+        <p>
+            <small>Note: Stock data may be delayed by up to 24 hours depending on the last database update.</small>
+        </p>
+    </section>
+
+    <section class="about-section">
+        <h2>Version Information</h2>
+        <p>Current Version: 1.0.0</p>
+    </section>
+</div>
