@@ -220,7 +220,7 @@ namespace DashboardAPI.Controllers
                 var jsonResponse = JsonDocument.Parse(response);
                 if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
                 {
-                    _logger.LogWarning($"Alpha Vantage API returned an information message: {infoMessage}");
+                    _logger.LogWarning("Alpha Vantage API returned an information message: API rate limit reached");
                     return BadRequest(new { message = "API rate limit exceeded or invalid request." });
                 }
 

@@ -44,7 +44,6 @@ Thumbs.db
 /src/environments/environment/prod.ts
 /DashboardAPI/appsettings.json
 
-
 # Environment variables
 .env
 *.env
@@ -57,3 +56,12 @@ appsettings.Production.json
 *.user
 *.userosscache
 *.sln.docstates
+
+## .NET Core
+bin/
+obj/
+out/
+.vs/
+.vscode/
+*.user
+appsettings.Development.json
