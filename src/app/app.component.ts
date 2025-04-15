@@ -18,5 +18,5 @@ import { OverviewCardsComponent } from './components/overview-cards/overview-car
   styleUrl: './app.component.css',
 })
 export class AppComponent {
-  title = 'Stock Dashboard';
+  title = 'Financial Dashboard';
 }
