@@ -15,7 +15,7 @@ if (builder.Environment.IsDevelopment())
 }
 
 
-var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING").Trim('"');
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")?.Trim('"');
 
 if (string.IsNullOrEmpty(connectionString))
 {
