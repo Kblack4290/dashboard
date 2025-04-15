@@ -2,45 +2,71 @@ using DashboardAPI.Data;
 using DashboardAPI.Services;
 using DashboardAPI.Controllers;
 using Microsoft.EntityFrameworkCore;
-using DotNetEnv;
-
-// Load environment variables from .env file
-Env.Load();
+using Npgsql;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load .env file in development only - ONCE
 if (builder.Environment.IsDevelopment())
 {
     DotNetEnv.Env.Load();
 }
 
+string connectionString = null;
 
-var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")?.Trim('"');
+var envConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")?.Trim('"');
+if (!string.IsNullOrEmpty(envConnectionString))
+{
+    connectionString = envConnectionString;
+    Console.WriteLine("Using DB_CONNECTION_STRING environment variable");
+}
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrEmpty(databaseUrl))
+    {
+        connectionString = databaseUrl;
+        Console.WriteLine("Using DATABASE_URL environment variable");
+    }
+}
 
 if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-    if (string.IsNullOrEmpty(connectionString))
+    if (!string.IsNullOrEmpty(connectionString))
     {
-        Console.WriteLine("WARNING: Database connection string is missing!");
+        Console.WriteLine("Using ConnectionStrings:DefaultConnection from configuration");
     }
 }
 
-var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
-
-// Add services to the container.
-// Configure Entity Framework Core with PostgreSQL
-builder.Services.AddDbContext<DashboardContext>(options =>
+// Log warning if still empty
+if (string.IsNullOrEmpty(connectionString))
 {
-    options.UseNpgsql(connectionString);
+    Console.WriteLine("WARNING: Database connection string is missing!");
+}
+else
+{
+    // Log the connection string type (not the actual string for security)
+    Console.WriteLine($"Connection string format: {(connectionString.StartsWith("postgresql://") ? "URL" : "Key-Value")}");
+}
 
-    // Log connection string in development for debugging
-    if (builder.Environment.IsDevelopment())
+var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
+if (string.IsNullOrEmpty(apiKey))
+{
+    apiKey = builder.Configuration["AlphaVantage:ApiKey"];
+}
+
+// Configure Entity Framework Core with PostgreSQL
+if (!string.IsNullOrEmpty(connectionString))
+{
+    builder.Services.AddDbContext<DashboardContext>(options =>
     {
-        Console.WriteLine($"Using connection string: {connectionString}");
-    }
-});
+        // Handle both connection string formats
+        options.UseNpgsql(connectionString);
+    });
+}
 
 // Register the API key for the background service
 builder.Services.AddSingleton<IConfiguration>(provider =>
@@ -114,6 +140,14 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "!An error occurred applying migrations. Error: {Message}", ex.Message);
     }
 }
+
+app.MapGet("/api/diagnostics", () => new
+{
+    DatabaseConfigured = !string.IsNullOrEmpty(connectionString),
+    ConnectionStringFormat = connectionString?.StartsWith("postgresql://") == true ? "URL" : "Key-Value",
+    ApiKeyConfigured = !string.IsNullOrEmpty(apiKey),
+    Environment = app.Environment.EnvironmentName
+});
 
 app.MapControllers();
 app.Run();
