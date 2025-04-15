@@ -2,15 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { inject } from '@angular/core';
-import { environment } from '../../environments/environment/prod';
+import { environment } from '../../environments/environment/dev';
 import { WatchlistItem } from '../models/watchlist-item.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AlphaVantageService {
-  private baseUrl = 'https://www.alphavantage.co/query';
-  private apiUrl = environment.apiUrl || 'http://localhost:5000';
+  private apiUrl = environment.apiUrl;
   private dashboardEndpoint = '/api/Dashboard';
 
   constructor(private http: HttpClient) {}
