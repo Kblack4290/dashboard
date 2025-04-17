@@ -68,6 +68,26 @@ if (!string.IsNullOrEmpty(connectionString))
     });
 }
 
+// cors policy to allow requests from Angular frontend
+// This policy allows requests from the specified origins, methods, and headers
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policyBuilder =>
+    {
+        policyBuilder
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://localhost:4200",
+                "https://dashboard-app-x7u6.onrender.com",
+                "https://dashboard-api.onrender.com",
+                "https://dashboard-api-tbsx.onrender.com"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
 // Register the API key for the background service
 builder.Services.AddSingleton<IConfiguration>(provider =>
 {
@@ -87,24 +107,7 @@ builder.Services.AddScoped<DashboardController>();
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<AlphaVantageSchedulerService>();
 
-// cors policy to allow requests from Angular frontend
-// This policy allows requests from the specified origins, methods, and headers
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAngular", policyBuilder =>
-    {
-        policyBuilder
-            .WithOrigins(
-                "http://localhost:4200",
-                "https://localhost:4200",
-                "https://dashboard-app-x7u6.onrender.com",
-                "https://dashboard-api.onrender.com"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
+
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -112,6 +115,11 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 app.UseCors("AllowAngular");
+
+// Add these standard middleware components
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
