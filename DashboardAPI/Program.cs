@@ -78,13 +78,16 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:4200",
                 "https://localhost:4200",
+                "http://localhost:5000",
+                "https://localhost:5001",
                 "https://dashboard-app-x7u6.onrender.com",
                 "https://dashboard-api.onrender.com",
                 "https://dashboard-api-tbsx.onrender.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials();
+            .WithExposedHeaders("Content-Disposition")
+            .SetIsOriginAllowedToAllowWildcardSubdomains();
     });
 });
 
