@@ -52,10 +52,17 @@ else
     Console.WriteLine($"Connection string format: {(connectionString.StartsWith("postgresql://") ? "URL" : "Key-Value")}");
 }
 
-var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
-if (string.IsNullOrEmpty(apiKey))
+// Get API Keys from environment variables or configuration
+var alphaVantageApiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
+if (string.IsNullOrEmpty(alphaVantageApiKey))
 {
-    apiKey = builder.Configuration["AlphaVantage:ApiKey"];
+    alphaVantageApiKey = builder.Configuration["AlphaVantage:ApiKey"];
+}
+
+var yahooFinanceApiKey = Environment.GetEnvironmentVariable("YAHOO_FINANCE_API_KEY")?.Trim('"');
+if (string.IsNullOrEmpty(yahooFinanceApiKey))
+{
+    yahooFinanceApiKey = builder.Configuration["YahooFinance:ApiKey"];
 }
 
 // Configure Entity Framework Core with PostgreSQL
@@ -91,13 +98,14 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Register the API key for the background service
+// Register the API keys for the services
 builder.Services.AddSingleton<IConfiguration>(provider =>
 {
     var config = new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string>
         {
-            {"AlphaVantage:ApiKey", apiKey}
+            {"AlphaVantage:ApiKey", alphaVantageApiKey},
+            {"YahooFinance:ApiKey", yahooFinanceApiKey}
         })
         .Build();
     return config;
@@ -108,9 +116,14 @@ builder.Services.AddScoped<DashboardController>();
 
 // Configure HttpClient for making API requests
 builder.Services.AddHttpClient();
+
+// Register our new stock data services with the fallback pattern
+builder.Services.AddScoped<YahooFinanceService>();
+builder.Services.AddScoped<AlphaVantageService>();
+builder.Services.AddScoped<IStockDataService, FallbackStockDataService>();
+
+// Register scheduler service
 builder.Services.AddHostedService<AlphaVantageSchedulerService>();
-
-
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -156,7 +169,8 @@ app.MapGet("/api/diagnostics", () => new
 {
     DatabaseConfigured = !string.IsNullOrEmpty(connectionString),
     ConnectionStringFormat = connectionString?.StartsWith("postgresql://") == true ? "URL" : "Key-Value",
-    ApiKeyConfigured = !string.IsNullOrEmpty(apiKey),
+    AlphaVantageApiKeyConfigured = !string.IsNullOrEmpty(alphaVantageApiKey),
+    YahooFinanceApiKeyConfigured = !string.IsNullOrEmpty(yahooFinanceApiKey),
     Environment = app.Environment.EnvironmentName
 });
 

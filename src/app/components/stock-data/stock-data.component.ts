@@ -123,7 +123,7 @@ export class StockDataComponent implements OnInit {
         this.updateStockInfo();
         this.loading = false;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = err.error?.message || 'Failed to load stock data.';
         console.error(`Error loading data for ${symbol}: ${err.message}`);
         this.loading = false;
@@ -244,29 +244,20 @@ export class StockDataComponent implements OnInit {
     // Update current symbol
     this.currentSymbol = this.symbolInput.toUpperCase();
 
-    // Fetch stock data through the backend
+    // Fetch stock data through the backend using our updated service
+    // The IndexedDB caching now happens within the service automatically
     this.alphaVantageService.getStockData(this.symbolInput).subscribe({
       next: (data) => {
-        this.alphaVantageService
-          .saveStockData(this.symbolInput, data)
-          .subscribe({
-            next: () => {
-              this.successMessage = 'Data saved successfully';
-              this.loading = false;
+        this.successMessage = 'Data retrieved and cached successfully';
+        this.loading = false;
 
-              // Load data to display chart and info
-              this.loadStockData(this.symbolInput);
+        // Load data to display chart and info
+        this.loadStockData(this.symbolInput);
 
-              // Check if this symbol is in the watchlist to update button state
-              this.checkWatchlist(this.currentSymbol);
-            },
-            error: (err) => {
-              this.errorMessage = `Failed to save data: ${err.message}`;
-              this.loading = false;
-            },
-          });
+        // Check if this symbol is in the watchlist to update button state
+        this.checkWatchlist(this.currentSymbol);
       },
-      error: (err) => {
+      error: (err: Error) => {
         this.errorMessage = `Failed to fetch data: ${err.message}`;
         this.loading = false;
       },
@@ -281,7 +272,7 @@ export class StockDataComponent implements OnInit {
           (item: WatchlistItem) => item.symbol.toUpperCase() === upperSymbol
         );
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Error checking watchlist:', err);
         this.isInWatchlist = false;
       },
@@ -304,7 +295,7 @@ export class StockDataComponent implements OnInit {
             // Re-check watchlist to confirm status
             this.checkWatchlist(this.currentSymbol);
           },
-          error: (err) => {
+          error: (err: { error?: { message?: string }; message?: string }) => {
             this.errorMessage = `Error removing from watchlist: ${
               err.error?.message || err.message || 'Unknown error'
             }`;
@@ -335,7 +326,7 @@ export class StockDataComponent implements OnInit {
           // Re-check watchlist to confirm status
           this.checkWatchlist(this.currentSymbol);
         },
-        error: (err) => {
+        error: (err: { error?: { message?: string }; message?: string }) => {
           this.errorMessage = `Error adding to watchlist: ${
             err.error?.message || err.message || 'Unknown error'
           }`;

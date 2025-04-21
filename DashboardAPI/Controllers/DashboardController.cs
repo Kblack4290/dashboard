@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using DashboardAPI.Data;
 using DashboardAPI.Models;
+using DashboardAPI.Services;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text.Json;
@@ -11,21 +12,25 @@ namespace DashboardAPI.Controllers
     [Route("api/[controller]")]
     [ApiController]
 
-    // This controller handles requests related to stock data from Alpha Vantage
+    // This controller handles requests related to stock data from multiple providers
     public class DashboardController : ControllerBase
     {
         private readonly DashboardContext _context;
         private readonly ILogger<DashboardController> _logger;
+        private readonly IStockDataService _stockDataService;
         private readonly HttpClient _httpClient;
 
-        public DashboardController(DashboardContext context, ILogger<DashboardController> logger, IHttpClientFactory httpClientFactory)
+        public DashboardController(DashboardContext context, ILogger<DashboardController> logger,
+                                  IHttpClientFactory httpClientFactory, IStockDataService stockDataService)
         {
             _context = context;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient();
+            _stockDataService = stockDataService;
         }
 
         // Getting the latest stock data for all tickers
+        // This will be refactored to use client-side IndexedDB in the future
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestData()
         {
@@ -63,8 +68,6 @@ namespace DashboardAPI.Controllers
         }
 
         // Getting stock data for a specific ticker symbol
-        // This endpoint is called by the Alpha Vantage API to get stock data
-        // It returns the stock data for the specified symbol in descending order by date
         [HttpGet("{symbol}")]
         public async Task<IActionResult> GetStockData(string symbol)
         {
@@ -84,51 +87,6 @@ namespace DashboardAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        // Saving stock data for a specific ticker symbol
-        // This endpoint is called by the Alpha Vantage API to save stock data
-        // It takes the symbol and the stock data in JSON format as input
-        [HttpPost("{symbol}")]
-        public async Task<IActionResult> SaveStockData(string symbol, [FromBody] JsonElement data)
-        {
-            try
-            {
-                _logger.LogInformation($"Received request to save data for symbol: {symbol}");
-                _logger.LogInformation($"Incoming JSON payload: Possible API KEY limit reached");
-
-                if (!data.TryGetProperty("Time Series (Daily)", out var timeSeriesDaily))
-                {
-                    _logger.LogError("The key 'Time Series (Daily)' was not found in the JSON payload.");
-                    return BadRequest(new { message = "Invalid JSON payload. 'Time Series (Daily)' key is missing." });
-                }
-
-                foreach (var date in timeSeriesDaily.EnumerateObject())
-                {
-                    var values = date.Value;
-
-                    var stockData = new StockData
-                    {
-                        Symbol = symbol,
-                        Date = date.Name,
-                        Open = values.GetProperty("1. open").GetString(),
-                        High = values.GetProperty("2. high").GetString(),
-                        Low = values.GetProperty("3. low").GetString(),
-                        Close = values.GetProperty("4. close").GetString(),
-                        Volume = values.GetProperty("5. volume").GetString()
-                    };
-
-                    _context.StockData.Add(stockData);
-                }
-
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Stock data saved successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error saving stock data for symbol: {symbol}");
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -202,40 +160,26 @@ namespace DashboardAPI.Controllers
             }
         }
 
+        // Updated to use our FallbackStockDataService
         [HttpGet("fetch/{symbol}")]
         public async Task<IActionResult> FetchStockData(string symbol)
         {
             try
             {
-                var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY");
-                if (string.IsNullOrEmpty(apiKey))
+                _logger.LogInformation($"Fetching stock data for symbol: {symbol} using fallback service");
+                var data = await _stockDataService.GetStockData(symbol);
+
+                if (data == null)
                 {
-                    return BadRequest(new { message = "API key is not configured." });
+                    return BadRequest(new { message = "Could not retrieve stock data. API limits may have been reached." });
                 }
 
-                var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={apiKey}";
-                var response = await _httpClient.GetStringAsync(url);
-
-                // Parse the response to check for error messages
-                var jsonResponse = JsonDocument.Parse(response);
-                if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
-                {
-                    _logger.LogWarning("Alpha Vantage API returned an information message: API rate limit reached");
-                    return BadRequest(new { message = "API rate limit exceeded or invalid request." });
-                }
-
-                if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
-                {
-                    _logger.LogError("Alpha Vantage API returned an information message: API rate limit reached");
-                    return BadRequest(new { message = "Error fetching stock data. Please try again later." });
-                }
-
-                return Ok(jsonResponse);
+                return Ok(data);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error fetching stock data for symbol: {symbol}");
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = "An error occurred while fetching stock data." });
             }
         }
 
@@ -289,75 +233,26 @@ namespace DashboardAPI.Controllers
             }
         }
 
+        // Updated to use our FallbackStockDataService
         [HttpGet("company-overview/{symbol}")]
         public async Task<IActionResult> GetCompanyOverview(string symbol)
         {
             try
             {
-                var apiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY");
-                if (string.IsNullOrEmpty(apiKey))
+                _logger.LogInformation($"Fetching company overview for symbol: {symbol} using fallback service");
+                var data = await _stockDataService.GetCompanyOverview(symbol);
+
+                if (data == null)
                 {
-                    return BadRequest(new { message = "API key is not configured." });
+                    return BadRequest(new { message = "Could not retrieve company overview. API limits may have been reached." });
                 }
 
-                var url = $"https://www.alphavantage.co/query?function=OVERVIEW&symbol={symbol}&apikey={apiKey}";
-                var response = await _httpClient.GetStringAsync(url);
-
-                // Parse the response to check for error messages
-                var jsonResponse = JsonDocument.Parse(response);
-                if (jsonResponse.RootElement.TryGetProperty("Information", out var infoMessage))
-                {
-                    _logger.LogWarning("Alpha Vantage API returned an information message: API rate limit reached");
-                    return BadRequest(new { message = "API rate limit exceeded or invalid request." });
-                }
-
-                if (jsonResponse.RootElement.TryGetProperty("Error Message", out var errorMessage))
-                {
-                    _logger.LogError("Alpha Vantage API returned an information message: API rate limit reached");
-                    return BadRequest(new { message = "Error fetching company overview. Please try again later." });
-                }
-
-                return Ok(jsonResponse);
+                return Ok(data);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error fetching company overview for symbol: {symbol}");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpPost("company-overview")]
-        public async Task<IActionResult> SaveCompanyOverview([FromBody] CompanyOverview data)
-        {
-            try
-            {
-                // Check if company overview already exists
-                var existingOverview = await _context.CompanyOverviews
-                    .FirstOrDefaultAsync(c => c.Symbol == data.Symbol);
-
-                if (existingOverview != null)
-                {
-                    // Update existing record
-                    existingOverview.Name = data.Name;
-                    existingOverview.Description = data.Description;
-                    existingOverview.Sector = data.Sector;
-                    existingOverview.Industry = data.Industry;
-                    existingOverview.LastUpdated = DateTime.UtcNow;
-                }
-                else
-                {
-                    // Add new record
-                    data.LastUpdated = DateTime.UtcNow;
-                    _context.CompanyOverviews.Add(data);
-                }
-
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Company overview saved successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error saving company overview for symbol: {data.Symbol}");
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = "An error occurred while fetching company overview." });
             }
         }
     }
