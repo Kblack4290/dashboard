@@ -1,8 +1,6 @@
-using DashboardAPI.Data;
 using DashboardAPI.Services;
 using DashboardAPI.Controllers;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,44 +11,18 @@ if (builder.Environment.IsDevelopment())
     DotNetEnv.Env.Load();
 }
 
-string connectionString = null;
+// string connectionString = null;
 
-var envConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")?.Trim('"');
-if (!string.IsNullOrEmpty(envConnectionString))
-{
-    connectionString = envConnectionString;
-    Console.WriteLine("Using DB_CONNECTION_STRING environment variable");
-}
 
-if (string.IsNullOrEmpty(connectionString))
-{
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (!string.IsNullOrEmpty(databaseUrl))
-    {
-        connectionString = databaseUrl;
-        Console.WriteLine("Using DATABASE_URL environment variable");
-    }
-}
+// if (string.IsNullOrEmpty(connectionString))
+// {
+//     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//     if (!string.IsNullOrEmpty(connectionString))
+//     {
+//         Console.WriteLine("Using ConnectionStrings:DefaultConnection from configuration");
+//     }
+// }
 
-if (string.IsNullOrEmpty(connectionString))
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrEmpty(connectionString))
-    {
-        Console.WriteLine("Using ConnectionStrings:DefaultConnection from configuration");
-    }
-}
-
-// Log warning if still empty
-if (string.IsNullOrEmpty(connectionString))
-{
-    Console.WriteLine("WARNING: Database connection string is missing!");
-}
-else
-{
-    // Log the connection string type (not the actual string for security)
-    Console.WriteLine($"Connection string format: {(connectionString.StartsWith("postgresql://") ? "URL" : "Key-Value")}");
-}
 
 // Get API Keys from environment variables or configuration
 var alphaVantageApiKey = Environment.GetEnvironmentVariable("ALPHA_VANTAGE_API_KEY")?.Trim('"');
@@ -63,16 +35,6 @@ var yahooFinanceApiKey = Environment.GetEnvironmentVariable("YAHOO_FINANCE_API_K
 if (string.IsNullOrEmpty(yahooFinanceApiKey))
 {
     yahooFinanceApiKey = builder.Configuration["YahooFinance:ApiKey"];
-}
-
-// Configure Entity Framework Core with PostgreSQL
-if (!string.IsNullOrEmpty(connectionString))
-{
-    builder.Services.AddDbContext<DashboardContext>(options =>
-    {
-        // Handle both connection string formats
-        options.UseNpgsql(connectionString);
-    });
 }
 
 // cors policy to allow requests from Angular frontend
@@ -122,8 +84,8 @@ builder.Services.AddScoped<YahooFinanceService>();
 builder.Services.AddScoped<AlphaVantageService>();
 builder.Services.AddScoped<IStockDataService, FallbackStockDataService>();
 
-// Register scheduler service
-builder.Services.AddHostedService<AlphaVantageSchedulerService>();
+// // Register scheduler service
+// builder.Services.AddHostedService<AlphaVantageSchedulerService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -142,33 +104,31 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<DashboardContext>();
-        if (context.Database.CanConnect())
-        {
-            context.Database.Migrate();
-        }
-        else
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError("Cannot connect to database with provided connection string.");
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "!An error occurred applying migrations. Error: {Message}", ex.Message);
-    }
-}
+// using (var scope = app.Services.CreateScope())
+// {
+//     var services = scope.ServiceProvider;
+//     try
+//     {
+//         var context = services.GetRequiredService<DashboardContext>();
+//         if (context.Database.CanConnect())
+//         {
+//             context.Database.Migrate();
+//         }
+//         else
+//         {
+//             var logger = services.GetRequiredService<ILogger<Program>>();
+//             logger.LogError("Cannot connect to database with provided connection string.");
+//         }
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = services.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "!An error occurred applying migrations. Error: {Message}", ex.Message);
+//     }
+// }
 
 app.MapGet("/api/diagnostics", () => new
 {
-    DatabaseConfigured = !string.IsNullOrEmpty(connectionString),
-    ConnectionStringFormat = connectionString?.StartsWith("postgresql://") == true ? "URL" : "Key-Value",
     AlphaVantageApiKeyConfigured = !string.IsNullOrEmpty(alphaVantageApiKey),
     YahooFinanceApiKeyConfigured = !string.IsNullOrEmpty(yahooFinanceApiKey),
     Environment = app.Environment.EnvironmentName

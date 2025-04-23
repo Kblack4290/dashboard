@@ -107,16 +107,37 @@ export class StockDataComponent implements OnInit {
     this.errorMessage = '';
 
     // Get data directly from the database instead of fetching from Alpha Vantage
-    this.alphaVantageService.getStockDataFromDb(symbol).subscribe({
+    this.alphaVantageService.getStockData(symbol).subscribe({
       next: (data) => {
-        if (!data || data.length === 0) {
+        if (!data || !data.body || Object.keys(data.body).length === 0) {
           this.errorMessage = `No data found for ${symbol}`;
           this.loading = false;
           return;
         }
 
-        // Store all available data (up to 30 days)
-        this.stockData = data.slice(0, 30);
+        console.log('DATA ', data);
+
+        // Convert object to array format
+        const stockDataArray = Object.keys(data.body).map((timestamp) => {
+          const entry = data.body[timestamp];
+          return {
+            date: new Date(parseInt(timestamp) * 1000)
+              .toISOString()
+              .split('T')[0],
+            close: entry.close || entry.price || 0,
+            high: entry.high || entry.close || 0,
+            low: entry.low || entry.close || 0,
+            volume: entry.volume || 0,
+          };
+        });
+
+        // Sort by timestamp (newest first)
+        stockDataArray.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        // Take only the most recent 30 entries
+        this.stockData = stockDataArray.slice(0, 30);
 
         // Update the chart based on current timeRange
         this.updateChart();
