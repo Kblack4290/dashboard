@@ -1,266 +1,224 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Observable, from, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
+import Dexie, { Transaction } from 'dexie';
 import { WatchlistItem } from '../models/watchlist-item.model';
+
+class StockDatabase extends Dexie {
+  stockData!: Dexie.Table<
+    {
+      symbol: string;
+      data: any;
+      lastUpdated: Date;
+    },
+    string
+  >;
+
+  watchlist!: Dexie.Table<WatchlistItem, number>;
+
+  companyOverviews!: Dexie.Table<
+    {
+      symbol: string;
+      data: any;
+      lastUpdated: Date;
+    },
+    string
+  >;
+
+  constructor() {
+    super('StockDashboardDB');
+
+    this.version(2)
+      .stores({
+        stockData: 'symbol',
+        watchlist: '++id, symbol',
+        companyOverviews: 'symbol',
+      })
+      .upgrade(function (transaction: Transaction) {
+        console.log(`Upgrading database`);
+      });
+  }
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class IndexedDbService {
-  private db: IDBDatabase | null = null;
+  private db: StockDatabase | null = null;
   private readonly DB_NAME = 'StockDashboardDB';
-  private readonly DB_VERSION = 1;
+  private readonly MAX_AGE_HOURS = 24;
+  private isBrowser: boolean;
 
-  constructor() {
-    this.initDb();
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    this.isBrowser = isPlatformBrowser(platformId);
+
+    if (this.isBrowser) {
+      try {
+        this.db = new StockDatabase();
+        this.initializeDb();
+      } catch (error) {
+        console.error('Failed to create database:', error);
+        this.db = null;
+      }
+    }
   }
 
-  private initDb(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      if (this.db) {
-        resolve(this.db);
-        return;
-      }
+  private initializeDb(): void {
+    if (!this.db || !this.isBrowser) return;
 
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Create object stores
-        if (!db.objectStoreNames.contains('watchlist')) {
-          const watchlistStore = db.createObjectStore('watchlist', {
-            keyPath: 'symbol',
-          });
-          watchlistStore.createIndex('symbol', 'symbol', { unique: true });
-        }
-
-        if (!db.objectStoreNames.contains('stockData')) {
-          const stockDataStore = db.createObjectStore('stockData', {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-          stockDataStore.createIndex('symbol', 'symbol', { unique: false });
-          stockDataStore.createIndex('symbolDate', ['symbol', 'date'], {
-            unique: true,
-          });
-        }
-
-        if (!db.objectStoreNames.contains('companyOverviews')) {
-          const companyStore = db.createObjectStore('companyOverviews', {
-            keyPath: 'symbol',
-          });
-          companyStore.createIndex('symbol', 'symbol', { unique: true });
-        }
-      };
-
-      request.onsuccess = (event) => {
-        this.db = (event.target as IDBOpenDBRequest).result;
-        resolve(this.db);
-      };
-
-      request.onerror = (event) => {
-        console.error(
-          'IndexedDB error:',
-          (event.target as IDBOpenDBRequest).error
-        );
-        reject((event.target as IDBOpenDBRequest).error);
-      };
+    this.db.open().catch((error) => {
+      console.error('Failed to open database:', error);
     });
   }
 
-  // Watchlist operations
-  addToWatchlist(item: WatchlistItem): Observable<void> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<void>((resolve, reject) => {
-          const transaction = db.transaction('watchlist', 'readwrite');
-          const store = transaction.objectStore('watchlist');
+  isDataRecent(
+    timestamp: Date,
+    maxAgeHours: number = this.MAX_AGE_HOURS
+  ): boolean {
+    if (!timestamp) return false;
 
-          item.dateAdded = new Date();
-          const request = store.add(item);
+    const lastUpdated = new Date(timestamp);
+    const now = new Date();
+    const diffHours =
+      (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
 
-          transaction.oncomplete = () => resolve();
-          transaction.onerror = () => reject(transaction.error);
-        });
-      })
-    ).pipe(
+    return diffHours < maxAgeHours;
+  }
+
+  getStockData(
+    symbol: string
+  ): Observable<{ data: any; lastUpdated: Date } | null> {
+    if (!this.isBrowser || !this.db) {
+      console.log('IndexedDB not available in this environment');
+      return of(null);
+    }
+
+    return from(this.db.stockData.get(symbol)).pipe(
+      map((result) => result || null),
       catchError((error) => {
-        console.error('Error adding to watchlist:', error);
-        throw error;
+        console.error(`Error retrieving stock data for ${symbol}:`, error);
+        return of(null);
+      })
+    );
+  }
+
+  saveStockData(symbol: string, data: any): Observable<void> {
+    if (!this.isBrowser || !this.db) {
+      return of(void 0);
+    }
+
+    const entry = {
+      symbol,
+      data,
+      lastUpdated: new Date(),
+    };
+
+    return from(this.db.stockData.put(entry)).pipe(
+      map(() => void 0),
+      catchError((error) => {
+        console.error(`Error saving stock data for ${symbol}:`, error);
+        return of(void 0);
       })
     );
   }
 
   getWatchlist(): Observable<WatchlistItem[]> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<WatchlistItem[]>((resolve, reject) => {
-          const transaction = db.transaction('watchlist', 'readonly');
-          const store = transaction.objectStore('watchlist');
-          const request = store.getAll();
+    if (!this.isBrowser || !this.db) {
+      return of([]);
+    }
 
-          request.onsuccess = () => resolve(request.result as WatchlistItem[]);
-          request.onerror = () => reject(request.error);
-        });
-      })
-    ).pipe(
+    return from(this.db.watchlist.toArray()).pipe(
       catchError((error) => {
-        console.error('Error getting watchlist:', error);
+        console.error('Error retrieving watchlist:', error);
         return of([]);
       })
     );
   }
 
+  addToWatchlist(item: WatchlistItem): Observable<number> {
+    if (!this.isBrowser || !this.db) {
+      return of(-1);
+    }
+
+    return from(this.db.watchlist.put(item)).pipe(
+      catchError((error) => {
+        console.error(`Error adding ${item.symbol} to watchlist:`, error);
+        throw error;
+      })
+    );
+  }
+
   removeFromWatchlist(symbol: string): Observable<void> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<void>((resolve, reject) => {
-          const transaction = db.transaction('watchlist', 'readwrite');
-          const store = transaction.objectStore('watchlist');
-          const request = store.delete(symbol);
+    if (!this.isBrowser || !this.db) {
+      return of(void 0);
+    }
 
-          transaction.oncomplete = () => resolve();
-          transaction.onerror = () => reject(transaction.error);
-        });
-      })
-    ).pipe(
+    return from(this.db.watchlist.where('symbol').equals(symbol).delete()).pipe(
+      map(() => void 0),
       catchError((error) => {
-        console.error('Error removing from watchlist:', error);
+        console.error(`Error removing ${symbol} from watchlist:`, error);
         throw error;
       })
     );
   }
 
-  // Stock data operations
-  saveStockData(symbol: string, data: any): Observable<void> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<void>((resolve, reject) => {
-          const transaction = db.transaction('stockData', 'readwrite');
-          const store = transaction.objectStore('stockData');
+  getCompanyOverview(
+    symbol: string
+  ): Observable<{ data: any; lastUpdated: Date } | null> {
+    if (!this.isBrowser || !this.db) {
+      return of(null);
+    }
 
-          const stockEntry = {
-            symbol,
-            data,
-            lastUpdated: new Date(),
-          };
-
-          // Check if we already have this data
-          const index = store.index('symbol');
-          const getRequest = index.getAll(symbol);
-
-          getRequest.onsuccess = () => {
-            // If we have data for this symbol, delete it first
-            if (getRequest.result.length > 0) {
-              getRequest.result.forEach((item) => {
-                store.delete(item.id);
-              });
-            }
-
-            // Now add the new data
-            store.add(stockEntry);
-          };
-
-          transaction.oncomplete = () => resolve();
-          transaction.onerror = () => reject(transaction.error);
-        });
-      })
-    ).pipe(
+    return from(this.db.companyOverviews.get(symbol)).pipe(
+      map((result) => result || null),
       catchError((error) => {
-        console.error(`Error saving stock data for ${symbol}:`, error);
-        throw error;
-      })
-    );
-  }
-
-  getStockData(symbol: string): Observable<any> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<any>((resolve, reject) => {
-          const transaction = db.transaction('stockData', 'readonly');
-          const store = transaction.objectStore('stockData');
-          const index = store.index('symbol');
-          const request = index.getAll(symbol);
-
-          request.onsuccess = () => {
-            if (request.result && request.result.length > 0) {
-              // Get the most recent entry
-              const sortedData = request.result.sort(
-                (a, b) =>
-                  new Date(b.lastUpdated).getTime() -
-                  new Date(a.lastUpdated).getTime()
-              );
-              resolve(sortedData[0]);
-            } else {
-              resolve(null);
-            }
-          };
-          request.onerror = () => reject(request.error);
-        });
-      })
-    ).pipe(
-      catchError((error) => {
-        console.error(`Error getting stock data for ${symbol}:`, error);
+        console.error(
+          `Error retrieving company overview for ${symbol}:`,
+          error
+        );
         return of(null);
       })
     );
   }
 
-  // Company overview operations
   saveCompanyOverview(symbol: string, data: any): Observable<void> {
-    return from(
-      this.initDb().then((db) => {
-        return new Promise<void>((resolve, reject) => {
-          const transaction = db.transaction('companyOverviews', 'readwrite');
-          const store = transaction.objectStore('companyOverviews');
+    if (!this.isBrowser || !this.db) {
+      return of(void 0);
+    }
 
-          const overviewEntry = {
-            symbol,
-            data,
-            lastUpdated: new Date(),
-          };
+    const entry = {
+      symbol,
+      data,
+      lastUpdated: new Date(),
+    };
 
-          const request = store.put(overviewEntry); // Use put to update if exists
-
-          transaction.oncomplete = () => resolve();
-          transaction.onerror = () => reject(transaction.error);
-        });
-      })
-    ).pipe(
+    return from(this.db.companyOverviews.put(entry)).pipe(
+      map(() => void 0),
       catchError((error) => {
         console.error(`Error saving company overview for ${symbol}:`, error);
-        throw error;
+        return of(void 0);
       })
     );
   }
 
-  getCompanyOverview(symbol: string): Observable<any> {
+  clearAllData(): Observable<void> {
+    if (!this.isBrowser || !this.db) {
+      return of(void 0);
+    }
+
     return from(
-      this.initDb().then((db) => {
-        return new Promise<any>((resolve, reject) => {
-          const transaction = db.transaction('companyOverviews', 'readonly');
-          const store = transaction.objectStore('companyOverviews');
-          const request = store.get(symbol);
-
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      })
+      Promise.all([
+        this.db.stockData.clear(),
+        this.db.watchlist.clear(),
+        this.db.companyOverviews.clear(),
+      ])
     ).pipe(
+      map(() => void 0),
       catchError((error) => {
-        console.error(`Error getting company overview for ${symbol}:`, error);
-        return of(null);
+        console.error('Error clearing database:', error);
+        return of(void 0);
       })
     );
-  }
-
-  // Helper to check if data is recent enough to use
-  isDataRecent(lastUpdated: Date | string, maxAgeHours: number = 24): boolean {
-    const now = new Date();
-    const updateTime = new Date(lastUpdated);
-    const hoursSinceUpdate =
-      (now.getTime() - updateTime.getTime()) / (1000 * 60 * 60);
-    return hoursSinceUpdate < maxAgeHours;
   }
 }

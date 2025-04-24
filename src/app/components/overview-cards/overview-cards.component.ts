@@ -15,7 +15,6 @@ import { forkJoin } from 'rxjs';
   styleUrls: ['./overview-cards.component.css'],
 })
 export class OverviewCardsComponent implements OnInit {
-  // Start with ticker symbols only
   overviewTickers: { name: string; ticker: string; data?: any }[] = [
     { name: '', ticker: 'DOW' },
     { name: '', ticker: 'SPY' },
@@ -32,48 +31,56 @@ export class OverviewCardsComponent implements OnInit {
   }
 
   fetchOverviewData() {
-    // Create an array of observables for getting company names
     const nameObservables = this.overviewTickers.map((ticker, index) =>
       this.symbolService
         .getCompanyName(ticker.ticker)
         .pipe(map((name) => ({ index, name })))
     );
 
-    // Get all the names first
     forkJoin(nameObservables).subscribe({
       next: (results) => {
-        // Update ticker names
         results.forEach((result) => {
           this.overviewTickers[result.index].name = result.name;
         });
 
-        // Now fetch the latest data
         this.alphaVantageService.getLatestStockData().subscribe({
           next: (data) => {
-            // Update each ticker with its corresponding data
+            console.log('Latest stock data:', data);
+
+            if (!data) {
+              console.error('No data returned from API');
+              return;
+            }
+
             this.overviewTickers.forEach((ticker) => {
               if (data[ticker.ticker]) {
                 ticker.data = {
-                  price: data[ticker.ticker].close,
-                  change: this.calculateDailyChange(data[ticker.ticker]),
+                  price:
+                    data[ticker.ticker].close ||
+                    data[ticker.ticker].price ||
+                    'N/A',
+                  change:
+                    this.calculateDailyChange(data[ticker.ticker]) || 'N/A',
                 };
               } else {
-                ticker.data = { price: 'No Data', change: 'No Data' };
+                ticker.data = { price: 0.0, change: 0.0 };
               }
             });
           },
           error: (error) => {
-            console.error(`Error fetching data from database: ${error}`);
+            console.error(`Error fetching data from database:`, error);
+            this.overviewTickers.forEach((ticker) => {
+              ticker.data = { price: 'Error', change: 'Error' };
+            });
           },
         });
       },
       error: (error) => {
-        console.error(`Error fetching company names: ${error}`);
+        console.error(`Error fetching company names:`, error);
       },
     });
   }
 
-  // Helper method to calculate percentage change
   private calculateDailyChange(stockData: any): string {
     if (!stockData || !stockData.open || !stockData.close) {
       return 'N/A';
@@ -86,7 +93,6 @@ export class OverviewCardsComponent implements OnInit {
     return change.toFixed(2);
   }
 
-  // set the selected symbol in the symbol service
   selectSymbol(ticker: string) {
     this.symbolService.setSymbol(ticker);
   }

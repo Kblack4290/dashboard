@@ -33,7 +33,6 @@ namespace DashboardAPI.Services
                     var content = await response.Content.ReadAsStringAsync();
                     var data = JsonDocument.Parse(content);
 
-                    // Check for rate limit or error messages using a safer approach
                     if (data.RootElement.TryGetProperty("Information", out var info))
                     {
                         _logger.LogWarning($"Alpha Vantage API returned information message: {info.ToString()} for symbol: {symbol}");
@@ -71,21 +70,18 @@ namespace DashboardAPI.Services
                     var content = await response.Content.ReadAsStringAsync();
                     var data = JsonDocument.Parse(content);
 
-                    // Check if the response is empty (often happens when API limit is exceeded)
                     if (data.RootElement.ValueKind == JsonValueKind.Object && data.RootElement.EnumerateObject().Count() == 0)
                     {
                         _logger.LogWarning($"Alpha Vantage API returned empty response for symbol: {symbol}");
                         return null;
                     }
 
-                    // Check for information message
                     if (data.RootElement.TryGetProperty("Information", out var info))
                     {
                         _logger.LogWarning($"Alpha Vantage API returned information message: {info.ToString()} for symbol: {symbol}");
                         return null;
                     }
 
-                    // Check for error message
                     if (data.RootElement.TryGetProperty("Error Message", out var errorMsg))
                     {
                         _logger.LogWarning($"Alpha Vantage API returned error message: {errorMsg.ToString()} for symbol: {symbol}");

@@ -24,7 +24,6 @@ namespace DashboardAPI.Services
         {
             try
             {
-                // Try Yahoo Finance first
                 _logger.LogInformation($"Attempting to fetch stock data from Yahoo Finance for symbol: {symbol}");
                 var yahooData = await _yahooService.GetStockData(symbol);
 
@@ -34,7 +33,6 @@ namespace DashboardAPI.Services
                     return yahooData;
                 }
 
-                // Fall back to Alpha Vantage if Yahoo fails
                 _logger.LogInformation($"Yahoo Finance failed, attempting to fetch from Alpha Vantage for symbol: {symbol}");
                 var alphaVantageData = await _alphaVantageService.GetStockData(symbol);
 
@@ -58,7 +56,6 @@ namespace DashboardAPI.Services
         {
             try
             {
-                // Try Yahoo Finance first
                 _logger.LogInformation($"Attempting to fetch company overview from Yahoo Finance for symbol: {symbol}");
                 var yahooData = await _yahooService.GetCompanyOverview(symbol);
 
@@ -68,7 +65,6 @@ namespace DashboardAPI.Services
                     return yahooData;
                 }
 
-                // Fall back to Alpha Vantage if Yahoo fails
                 _logger.LogInformation($"Yahoo Finance failed, attempting to fetch from Alpha Vantage for symbol: {symbol}");
                 var alphaVantageData = await _alphaVantageService.GetCompanyOverview(symbol);
 

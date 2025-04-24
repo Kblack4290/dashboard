@@ -15,18 +15,15 @@ interface CompanyInfo {
   providedIn: 'root',
 })
 export class SymbolService {
-  private symbolSource = new BehaviorSubject<string>('DOW'); // Default symbol
+  private symbolSource = new BehaviorSubject<string>('DOW');
   symbol$ = this.symbolSource.asObservable();
 
-  // Add company info behavior subject
   private companyInfoSource = new BehaviorSubject<CompanyInfo | null>(null);
   companyInfo$ = this.companyInfoSource.asObservable();
 
-  // Cache to avoid repeated API calls for the same symbol
   private companyInfoCache = new Map<string, CompanyInfo>();
 
   constructor(private alphaVantageService: AlphaVantageService) {
-    // Load initial company info for default symbol
     this.loadCompanyInfo('DOW');
   }
 
@@ -36,13 +33,11 @@ export class SymbolService {
   }
 
   private loadCompanyInfo(symbol: string): void {
-    // Check cache first
     if (this.companyInfoCache.has(symbol)) {
       this.companyInfoSource.next(this.companyInfoCache.get(symbol)!);
       return;
     }
 
-    // Otherwise fetch from API
     this.alphaVantageService
       .getCompanyOverview(symbol)
       .pipe(
@@ -57,12 +52,10 @@ export class SymbolService {
           return companyInfo;
         }),
         tap((info) => {
-          // Cache the result
           this.companyInfoCache.set(symbol, info);
         }),
         catchError((error) => {
           console.error('Error fetching company info:', error);
-          // Return a basic object with just the symbol if API fails
           return of({ symbol, name: symbol });
         })
       )
@@ -71,7 +64,6 @@ export class SymbolService {
       });
   }
 
-  // Helper method to get company name for a symbol
   getCompanyName(symbol: string): Observable<string> {
     if (this.companyInfoCache.has(symbol)) {
       return of(this.companyInfoCache.get(symbol)!.name);

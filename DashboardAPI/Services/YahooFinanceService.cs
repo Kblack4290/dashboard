@@ -20,7 +20,6 @@ namespace DashboardAPI.Services
       _logger = logger;
       _apiKey = configuration["YahooFinance:ApiKey"] ?? Environment.GetEnvironmentVariable("YAHOO_FINANCE_API_KEY");
 
-      // Configure HttpClient for RapidAPI
       _httpClient.DefaultRequestHeaders.Add("x-rapidapi-key", _apiKey);
       _httpClient.DefaultRequestHeaders.Add("x-rapidapi-host", HOST);
     }
@@ -32,7 +31,7 @@ namespace DashboardAPI.Services
         var url = $"https://{HOST}/api/v1/markets/stock/history?symbol={symbol}&interval=5m&diffandsplits=false";
         var response = await _httpClient.GetAsync(url);
 
-        response.EnsureSuccessStatusCode(); // This will throw if status code is not successful
+        response.EnsureSuccessStatusCode();
 
         _logger.LogInformation($"Using Yahoo API: {symbol} - Status Code: {response.StatusCode}");
         var content = await response.Content.ReadAsStringAsync();

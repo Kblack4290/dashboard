@@ -1,11 +1,11 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, forkJoin } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 import { WatchlistItem } from '../models/watchlist-item.model';
 import { IndexedDbService } from './indexed-db.service';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, switchMap, tap, map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
@@ -23,16 +23,13 @@ export class AlphaVantageService {
     this.isBrowser = isPlatformBrowser(this.platformId);
   }
 
-  // Fetch stock data with IndexedDB caching
   getStockData(symbol: string): Observable<any> {
     if (!this.isBrowser) {
       return of({});
     }
 
-    // Try to get data from IndexedDB first
     return this.indexedDbService.getStockData(symbol).pipe(
       switchMap((cachedData) => {
-        // If we have recent data in cache, use it
         if (
           cachedData &&
           this.indexedDbService.isDataRecent(cachedData.lastUpdated)
@@ -41,19 +38,16 @@ export class AlphaVantageService {
           return of(cachedData.data);
         }
 
-        // Otherwise fetch from API and cache the result
         console.log(`Fetching fresh stock data for ${symbol}`);
         return this.http
           .get<any>(`${this.apiUrl}${this.dashboardEndpoint}/fetch/${symbol}`)
           .pipe(
             tap((apiData) => {
-              // Cache the API result in IndexedDB
               this.indexedDbService.saveStockData(symbol, apiData).subscribe();
             }),
             catchError((error) => {
               console.error('Error fetching stock data:', error);
 
-              // If we have any cached data, return it even if it's old
               if (cachedData) {
                 console.log(
                   `Using stale cached data for ${symbol} due to API error`
@@ -68,34 +62,63 @@ export class AlphaVantageService {
     );
   }
 
-  // Get stock data directly from the database for a specific symbol
   getStockDataFromDb(symbol: string): Observable<any> {
     return this.http.get<any>(
       `${this.apiUrl}${this.dashboardEndpoint}/${symbol}`
     );
   }
 
-  // Getting latest data for all tickers
   getLatestStockData(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}${this.dashboardEndpoint}/latest`);
+    const tickers = ['DOW', 'SPY', 'NDAQ', 'GLD', 'BTCUSD'];
+    const result: { [key: string]: any } = {};
+
+    if (!this.isBrowser) {
+      return of(result);
+    }
+
+    const observables = tickers.map((ticker) =>
+      this.getStockData(ticker).pipe(
+        map((data) => ({ ticker, data })),
+        catchError((error) => {
+          console.error(`Error fetching data for ${ticker}:`, error);
+          return of({ ticker, data: null });
+        })
+      )
+    );
+
+    return forkJoin(observables).pipe(
+      map((results) => {
+        const latestData: { [key: string]: any } = {};
+        results.forEach((item) => {
+          if (item.data && item.data.body) {
+            const timestamps = Object.keys(item.data.body);
+            if (timestamps.length > 0) {
+              const latestTimestamp = timestamps[0];
+              latestData[item.ticker] = {
+                ...item.data.body[latestTimestamp],
+                date: new Date(parseInt(latestTimestamp) * 1000)
+                  .toISOString()
+                  .split('T')[0],
+              };
+            }
+          }
+        });
+        return latestData;
+      })
+    );
   }
 
-  // Get watchlist items from IndexedDB
   getWatchlist(): Observable<WatchlistItem[]> {
     if (!this.isBrowser) {
-      return of([]); // Return empty array during SSR
+      return of([]);
     }
 
     return this.indexedDbService.getWatchlist();
   }
 
-  // Add to watchlist with IndexedDB
   addToWatchlist(item: WatchlistItem): Observable<any> {
-    // Add to IndexedDB
     return this.indexedDbService.addToWatchlist(item).pipe(
-      // Optionally, you can also add to API for backup/sync purposes
       tap(() => {
-        // This is optional and can be removed if you don't want server-side storage
         this.http
           .post(`${this.apiUrl}${this.dashboardEndpoint}/watchlist`, item)
           .subscribe(
@@ -107,13 +130,9 @@ export class AlphaVantageService {
     );
   }
 
-  // Remove from watchlist with IndexedDB
   removeFromWatchlist(symbol: string): Observable<any> {
-    // Remove from IndexedDB
     return this.indexedDbService.removeFromWatchlist(symbol).pipe(
-      // Optionally, you can also remove from API for backup/sync purposes
       tap(() => {
-        // This is optional and can be removed if you don't want server-side storage
         this.http
           .delete(`${this.apiUrl}${this.dashboardEndpoint}/watchlist/${symbol}`)
           .subscribe(
@@ -125,16 +144,13 @@ export class AlphaVantageService {
     );
   }
 
-  // Get company overview with IndexedDB caching
   getCompanyOverview(symbol: string): Observable<any> {
     if (!this.isBrowser) {
       return of({});
     }
 
-    // Try to get data from IndexedDB first
     return this.indexedDbService.getCompanyOverview(symbol).pipe(
       switchMap((cachedData) => {
-        // If we have recent data in cache, use it
         if (
           cachedData &&
           this.indexedDbService.isDataRecent(cachedData.lastUpdated, 48)
@@ -143,7 +159,6 @@ export class AlphaVantageService {
           return of(cachedData.data);
         }
 
-        // Otherwise fetch from API and cache the result
         console.log(`Fetching fresh company overview for ${symbol}`);
         return this.http
           .get<any>(
@@ -151,7 +166,6 @@ export class AlphaVantageService {
           )
           .pipe(
             tap((apiData) => {
-              // Cache the API result in IndexedDB
               this.indexedDbService
                 .saveCompanyOverview(symbol, apiData)
                 .subscribe();
@@ -159,7 +173,6 @@ export class AlphaVantageService {
             catchError((error) => {
               console.error('Error fetching company overview:', error);
 
-              // If we have any cached data, return it even if it's old
               if (cachedData) {
                 console.log(
                   `Using stale cached company overview for ${symbol} due to API error`
